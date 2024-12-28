@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  backend:
+    build: ./
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./backend:/app
+  frontend:
+    # ... (define your frontend service - e.g., using Node.js and npm) ...
+    ports:
+      - "3000:3000"
+    # ...
