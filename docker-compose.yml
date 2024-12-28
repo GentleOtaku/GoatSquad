@@ -6,8 +6,13 @@ services:
       - "5000:5000"
     volumes:
       - ./backend:/app
+      - /app/node_modules
   frontend:
-    # ... (define your frontend service - e.g., using Node.js and npm) ...
+    build: ./frontend
     ports:
       - "3000:3000"
-    # ...
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
