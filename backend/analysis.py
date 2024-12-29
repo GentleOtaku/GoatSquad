@@ -2,6 +2,37 @@ import cv2
 import numpy as np
 import os
 
+def get_video_stats(video_path):
+    """
+    Get statistics about a video file
+    
+    Args:
+        video_path (str): Path to video file
+    
+    Returns:
+        dict: Dictionary containing video statistics
+    """
+    try:
+        cap = cv2.VideoCapture(video_path)
+        if not cap.isOpened():
+            return None
+
+        stats = {
+            'frame_count': int(cap.get(cv2.CAP_PROP_FRAME_COUNT)),
+            'fps': cap.get(cv2.CAP_PROP_FPS),
+            'width': int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
+            'height': int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
+            'duration': cap.get(cv2.CAP_PROP_FRAME_COUNT) / cap.get(cv2.CAP_PROP_FPS),
+            'file_size': os.path.getsize(video_path)
+        }
+        
+        cap.release()
+        return stats
+        
+    except Exception as e:
+        print(f"Error getting video stats: {str(e)}")
+        return None
+
 def invert_video_colors(video_path, output_path):
     """
     Takes a video file, inverts its colors, and saves the result
@@ -93,15 +124,27 @@ def process_uploaded_video(video_file):
         input_path = os.path.join(temp_dir, "input_video.mp4")
         video_file.save(input_path)
 
+        # Get original video stats
+        original_stats = get_video_stats(input_path)
+        if not original_stats:
+            return {
+                "success": False,
+                "message": "Failed to analyze video"
+            }
+
         # Process the video
         output_path = os.path.join(output_dir, "inverted_video.mp4")
         success = invert_video_colors(input_path, output_path)
 
         if success:
+            # Get processed video stats
+            processed_stats = get_video_stats(output_path)
             return {
                 "success": True,
                 "message": "Video processed successfully",
-                "output_path": output_path
+                "output_path": output_path,
+                "original_stats": original_stats,
+                "processed_stats": processed_stats
             }
         else:
             return {
