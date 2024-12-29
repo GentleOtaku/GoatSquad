@@ -7,13 +7,20 @@ import os
 import werkzeug
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+# Enable CORS with specific settings
+CORS(app, resources={
+    r"/*": {
+        "origins": ["http://localhost:3000"],
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type"]
+    }
+})
 
 # Create API instance
 api = Api(app, version='1.0', 
     title='Video Processing API',
     description='API for uploading and processing videos',
-    doc='/swagger'  # Swagger UI will be available at /swagger
+    doc='/swagger'
 )
 
 # Create namespaces for different endpoints
@@ -33,7 +40,6 @@ video_stats = api.model('VideoStats', {
 upload_response = api.model('UploadResponse', {
     'message': fields.String(description='Response message'),
     'error': fields.String(description='Error message if any'),
-    'original_stats': fields.Nested(video_stats, description='Original video statistics'),
     'processed_stats': fields.Nested(video_stats, description='Processed video statistics')
 })
 
@@ -65,7 +71,6 @@ class VideoUpload(Resource):
         if result['success']:
             return {
                 'message': 'Video processed successfully',
-                'original_stats': result['original_stats'],
                 'processed_stats': result['processed_stats']
             }, 200
         else:

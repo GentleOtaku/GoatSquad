@@ -8,9 +8,26 @@ COPY package*.json ./
 # Install dependencies
 RUN npm install
 
-# Copy the rest of the application
+# Install tailwindcss globally
+RUN npm install -g tailwindcss
+
+# Copy configuration files
+COPY tailwind.config.js .
+COPY postcss.config.js .
+
+# Copy source files
 COPY . .
+
+# Create the styles directory and CSS file
+RUN mkdir -p src/styles && \
+    echo "@tailwind base; @tailwind components; @tailwind utilities;" > src/styles/tailwind.css && \
+    npx tailwindcss -i ./src/styles/tailwind.css -o ./src/styles/output.css
+
+# Set permissions
+RUN chown -R node:node /app
+USER node
 
 EXPOSE 3000
 
-CMD ["npm", "start"]
+# Update the start command
+CMD ["npm", "run", "dev"]

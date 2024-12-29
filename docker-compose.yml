@@ -6,15 +6,27 @@ services:
       - "5000:5000"
     volumes:
       - ./backend:/app
-      - /app/node_modules
+    networks:
+      - app-network
+    environment:
+      - FLASK_ENV=development
+      - FLASK_APP=app.py
+
   frontend:
     build: ./frontend
     ports:
       - "3000:3000"
     environment:
       - REACT_APP_BACKEND_URL=http://localhost:5000
+      - WDS_SOCKET_PORT=0
     volumes:
       - ./frontend:/app
       - /app/node_modules
+    networks:
+      - app-network
     depends_on:
       - backend
+
+networks:
+  app-network:
+    driver: bridge
