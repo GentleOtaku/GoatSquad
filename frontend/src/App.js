@@ -1,157 +1,127 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
+import Stats from './components/Stats';
 
 function App() {
-  const [teams, setTeams] = useState([]);
-  const [players, setPlayers] = useState([]);
-  const [selectedTeam, setSelectedTeam] = useState(null);
-  const [selectedPlayer, setSelectedPlayer] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [processedVideo, setProcessedVideo] = useState(null);
+  const [uploadStatus, setUploadStatus] = useState(null);
+  const [videoStats, setVideoStats] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
-  const fetchTeams = useCallback(async () => {
+  const handleFileChange = (event) => {
+    setSelectedFile(event.target.files[0]);
+    setProcessedVideo(null);
+    setVideoStats(null);
+    setUploadStatus(null);
+  };
+
+  const handleUpload = async () => {
     try {
-      setLoading(true);
-      const response = await fetch(`${BACKEND_URL}/mlb/teams`);
+      setIsProcessing(true);
+      setUploadStatus('Uploading...');
+      const formData = new FormData();
+      formData.append('video', selectedFile);
+
+      const response = await fetch(`${BACKEND_URL}/video/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+      
       const data = await response.json();
-      setTeams(data);
+      
+      if (response.ok) {
+        setUploadStatus('Processing video...');
+        const videoResponse = await fetch(`${BACKEND_URL}/video/analyze`, {
+          method: 'POST',
+        });
+        
+        if (videoResponse.ok) {
+          const videoBlob = await videoResponse.blob();
+          setProcessedVideo(URL.createObjectURL(videoBlob));
+          setUploadStatus('Video processed successfully!');
+          if (data.processed_stats) {
+            setVideoStats(data.processed_stats);
+          }
+        } else {
+          setUploadStatus('Failed to process video');
+        }
+      } else {
+        setUploadStatus(data.error || 'Upload failed');
+      }
     } catch (error) {
-      console.error('Error fetching teams:', error);
+      console.error('Error:', error);
+      setUploadStatus('Upload failed: ' + error.message);
     } finally {
-      setLoading(false);
+      setIsProcessing(false);
     }
-  }, [BACKEND_URL]);
-
-  const fetchPlayers = useCallback(async (teamId) => {
-    try {
-      setLoading(true);
-      const response = await fetch(`${BACKEND_URL}/mlb/players/${teamId}`);
-      const data = await response.json();
-      setPlayers(data);
-    } catch (error) {
-      console.error('Error fetching players:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [BACKEND_URL]);
-
-  const fetchPlayerDetails = useCallback(async (playerId) => {
-    try {
-      setLoading(true);
-      const response = await fetch(`${BACKEND_URL}/mlb/player/${playerId}`);
-      const data = await response.json();
-      setSelectedPlayer(data);
-    } catch (error) {
-      console.error('Error fetching player details:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [BACKEND_URL]);
-
-  useEffect(() => {
-    fetchTeams();
-  }, [fetchTeams]);
-
-  useEffect(() => {
-    if (selectedTeam) {
-      fetchPlayers(selectedTeam.id);
-    }
-  }, [selectedTeam, fetchPlayers]);
+  };
 
   return (
-    <div className="min-h-screen bg-gray-100 py-8">
-      <div className="max-w-6xl mx-auto px-4">
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-4xl mx-auto px-4">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-blue-900 mb-2">MLB Fan Feed</h1>
-          <p className="text-gray-600">Select your favorite team and player</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Video Color Inverter</h1>
+          <p className="text-gray-600">Upload a video to invert its colors</p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* Team and Player Selection */}
-          <div className="space-y-6">
-            {/* Team Selection */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Select Team</h2>
-              <div className="relative">
-                <select
-                  className="w-full p-3 border border-gray-300 rounded-lg bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  onChange={(e) => {
-                    const team = teams[e.target.value];
-                    setSelectedTeam(team);
-                    setSelectedPlayer(null);
-                  }}
-                  value={selectedTeam ? teams.indexOf(selectedTeam) : ''}
-                  disabled={loading}
-                >
-                  <option value="">Choose a team...</option>
-                  {teams.map((team, index) => (
-                    <option key={team.id} value={index}>
-                      {team.city} {team.name} ({team.abbreviation})
-                    </option>
-                  ))}
-                </select>
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            <label className="flex-1 w-full">
+              <input
+                type="file"
+                onChange={handleFileChange}
+                accept="video/*"
+                className="hidden"
+              />
+              <div className="w-full px-4 py-2 text-gray-700 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                {selectedFile ? selectedFile.name : 'Choose video file...'}
               </div>
-            </div>
-
-            {/* Player Selection */}
-            {selectedTeam && (
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">Select Player</h2>
-                <div className="relative">
-                  <select
-                    className="w-full p-3 border border-gray-300 rounded-lg bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    onChange={(e) => fetchPlayerDetails(players[e.target.value].id)}
-                    value={selectedPlayer ? players.findIndex(p => p.id === selectedPlayer.id) : ''}
-                    disabled={loading}
-                  >
-                    <option value="">Choose a player...</option>
-                    {players.map((player, index) => (
-                      <option key={player.id} value={index}>
-                        #{player.number} {player.name} - {player.position}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            )}
+            </label>
+            <button
+              onClick={handleUpload}
+              disabled={!selectedFile || isProcessing}
+              className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+                !selectedFile || isProcessing
+                  ? 'bg-gray-300 cursor-not-allowed'
+                  : 'bg-blue-500 hover:bg-blue-600 text-white'
+              }`}
+            >
+              {isProcessing ? 'Processing...' : 'Process Video'}
+            </button>
           </div>
 
-          {/* Player Information */}
-          {selectedPlayer && (
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-2xl font-semibold text-gray-900 mb-6">Player Information</h2>
-              <div className="grid grid-cols-2 gap-6">
-                <InfoItem label="Name" value={selectedPlayer.name} />
-                <InfoItem label="Position" value={selectedPlayer.position} />
-                <InfoItem label="Team" value={selectedPlayer.team} />
-                <InfoItem label="Number" value={`#${selectedPlayer.number}`} />
-                <InfoItem label="Birth Date" value={selectedPlayer.birthDate} />
-                <InfoItem label="Height" value={selectedPlayer.height} />
-                <InfoItem label="Weight" value={`${selectedPlayer.weight} lbs`} />
-                <InfoItem label="Bats" value={selectedPlayer.batSide} />
-                <InfoItem label="Throws" value={selectedPlayer.throwSide} />
-              </div>
+          {uploadStatus && (
+            <div className={`mt-4 p-4 rounded-lg ${
+              uploadStatus.includes('failed')
+                ? 'bg-red-50 text-red-700'
+                : 'bg-green-50 text-green-700'
+            }`}>
+              {uploadStatus}
             </div>
           )}
         </div>
 
-        {loading && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-            <div className="bg-white p-4 rounded-lg">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-            </div>
+        {videoStats && (
+          <div className="mb-6">
+            <Stats stats={videoStats} title="Processed Video Statistics" />
+          </div>
+        )}
+
+        {processedVideo && (
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Processed Video</h3>
+            <video
+              controls
+              className="w-full rounded-lg"
+              src={processedVideo}
+            >
+              Your browser does not support the video tag.
+            </video>
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-function InfoItem({ label, value }) {
-  return (
-    <div className="border-b border-gray-100 pb-2">
-      <p className="text-sm text-gray-600">{label}</p>
-      <p className="font-medium text-gray-900">{value || 'N/A'}</p>
     </div>
   );
 }
