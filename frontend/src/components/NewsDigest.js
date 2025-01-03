@@ -6,6 +6,7 @@ function NewsDigest({ team, player }) {
   const [digest, setDigest] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const videoUrl = "https://mlb-cuts-diamond.mlb.com/FORGE/2024/2024-10/25/1f63eb4b-5d716856-889ba75a-csvm-diamondgcp-asset_1280x720_59_4000K.mp4";
 
   useEffect(() => {
     const fetchDigest = async () => {
@@ -70,7 +71,7 @@ function NewsDigest({ team, player }) {
         )}
       </div>
 
-      {/* Video Section */}
+      {/* MLB Video Section */}
       <div className="p-6 bg-white rounded-lg shadow">
         <h2 className="text-2xl font-bold mb-4">Featured Highlight</h2>
         <div className="aspect-w-16 aspect-h-9">
@@ -78,8 +79,9 @@ function NewsDigest({ team, player }) {
             className="w-full rounded-lg"
             controls
             playsInline
-            src="https://sporty-clips.mlb.com/YjlLTlpfWGw0TUFRPT1fQTFOVFVWQU1Vd0lBQVFjRFVnQUFDVkpVQUZsWEFnY0FVVlpRQVFGUVVsRUFCZ29D.mp4"
+            preload="metadata"
           >
+            <source src={videoUrl} type="video/mp4" />
             Your browser does not support the video tag.
           </video>
         </div>
