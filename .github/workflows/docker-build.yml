@@ -47,13 +47,4 @@ jobs:
           context: ./frontend
           file: ./frontend/Dockerfile
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.OWNER_LOWER }}/goatsquad-frontend:latest
-
-      - name: Create webhook event
-        if: success() && secrets.PORTAINER_WEBHOOK_URL != ''
-        run: |
-          if [ ! -z "${{ secrets.PORTAINER_WEBHOOK_URL }}" ]; then
-            curl -X POST "${{ secrets.PORTAINER_WEBHOOK_URL }}"
-          else
-            echo "No webhook URL provided, skipping webhook"
-          fi 
+          tags: ${{ env.REGISTRY }}/${{ env.OWNER_LOWER }}/goatsquad-frontend:latest 

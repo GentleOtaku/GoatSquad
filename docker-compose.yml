@@ -1,4 +1,4 @@
-version: '3.8'
+
 
 services:
   backend:
@@ -28,16 +28,3 @@ services:
 networks:
   app-network:
     driver: bridge
-
-secrets:
-  github_token:
-    external: true
-
-x-registry-auth: |
-  {
-    "auths": {
-      "ghcr.io": {
-        "auth": "${GITHUB_TOKEN_BASE64}"
-      }
-    }
-  }
