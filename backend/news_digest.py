@@ -1,7 +1,9 @@
 import os
+# pip install -U -q google-genai
+# pip install python-dotenv
 from dotenv import load_dotenv
-import google.generativeai as genai
-from google.generativeai.types import GenerationConfig
+from google import genai
+from google.genai import types
 import logging
 
 # Set up logging
@@ -15,66 +17,61 @@ if not api_key:
     logger.error("No GOOGLE_API_KEY found in environment variables")
     raise ValueError("GOOGLE_API_KEY is required")
 
-# Configure the Gemini API
-genai.configure(api_key=api_key)
-
 def get_news_digest(team_name, player_name):
     """
-    Generate a news digest about a specific MLB team and player using Gemini API
+    Generate a news digest about a specific MLB team and player using Gemini API with search
     """
     try:
-        # Initialize the model
-        model = genai.GenerativeModel('gemini-1.5-pro')
+        # Create a client with search capability
+        client = genai.Client(api_key=api_key)
+        
+        # Configure search tool
+        search_tool = {'google_search': {}}
+        
+        # Create the content structure with search-enabled prompt
+        prompt = f"""
+        Using real-time information from search:
 
-        # Create the content structure
-        contents = [{
-            "role": "user",
-            "parts": [{
-                "text": f"""Create a brief news digest about the MLB team {team_name} and player {player_name}. 
-                Format your response in markdown with the following sections:
+        # {team_name} Team Update
+        [Search for and provide current team standings, recent game results, and key statistics]
 
-                # Team Update: {team_name}
-                [Include latest team performance and standings]
+        # {player_name} Spotlight
+        [Search for and share latest performance metrics, recent games, and any news]
 
-                # Player Spotlight: {player_name}
-                [Include recent news and performance updates]
+        # Upcoming Games & Milestones
+        [Search for and list upcoming games, potential milestones, and key matchups]
 
-                # Upcoming Games & Milestones
-                [Include significant upcoming games and potential milestones]
+        Format requirements:
+        - Use markdown formatting
+        - Start each section directly with content
+        - Use bullet points for lists
+        - Include statistics where relevant
+        - Bold (**) key numbers and achievements
+        - Use blockquotes (>) for notable quotes or highlights
+        """
 
-                Use proper markdown formatting including:
-                - Headers (# for main sections)
-                - Bold (**) for important information
-                - Lists (- or *) for multiple points
-                - > for notable quotes or statistics
-                """
-            }]
-        }]
-
-        # Set generation configuration
-        generation_config = GenerationConfig(
-            temperature=0.7,
-            top_p=0.9,
-            top_k=40,
-            max_output_tokens=2048,
-        )
-
-        # Generate content
-        response = model.generate_content(
-            contents,
-            generation_config=generation_config,
-            stream=False
+        # Generate content with search enabled
+        response = client.models.generate_content(
+            model='gemini-2.0-flash-exp',
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                tools=[search_tool],
+                response_modalities=["TEXT"],
+            )
         )
 
         logger.info("Successfully generated news digest")
         
-        if response.prompt_feedback:
-            logger.info(f"Prompt feedback: {response.prompt_feedback}")
+        # Get search metadata
+        search_content = None
+        if hasattr(response.candidates[0], 'grounding_metadata') and \
+           hasattr(response.candidates[0].grounding_metadata, 'search_entry_point'):
+            search_content = response.candidates[0].grounding_metadata.search_entry_point.rendered_content
 
         return {
             'success': True,
             'digest': response.text,
-            'sources': "Generated using Google Gemini AI"
+            'sources': search_content or "Generated using Google Gemini AI with web search"
         }
 
     except Exception as e:

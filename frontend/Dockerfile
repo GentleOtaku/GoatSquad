@@ -8,8 +8,9 @@ COPY package*.json ./
 # Install dependencies
 RUN npm install
 
-# Install tailwindcss globally
+# Install tailwindcss and typography plugin globally
 RUN npm install -g tailwindcss
+RUN npm install -D @tailwindcss/typography
 
 # Copy configuration files
 COPY tailwind.config.js .

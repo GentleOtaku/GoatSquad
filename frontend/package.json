@@ -2,14 +2,14 @@
   "name": "mlb-fan-feed",
   "version": "0.1.0",
   "dependencies": {
-    "react": "^18.0.0",
-    "react-dom": "^18.0.0",
-    "react-scripts": "5.0.1",
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
-    "axios": "^1.6.7",
     "@headlessui/react": "^1.7.18",
     "@heroicons/react": "^2.1.1",
-    "react-markdown": "^9.0.1"
+    "axios": "^1.6.7",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "react-markdown": "^9.0.1",
+    "react-scripts": "5.0.1"
   },
   "scripts": {
     "dev": "react-scripts start",
@@ -37,6 +37,7 @@
     ]
   },
   "devDependencies": {
+    "@tailwindcss/typography": "^0.5.15",
     "autoprefixer": "^10.4.16",
     "postcss": "^8.4.33",
     "tailwindcss": "^3.4.1"

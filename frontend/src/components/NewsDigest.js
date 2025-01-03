@@ -7,6 +7,18 @@ const NewsDigest = ({ team, player }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const cleanSourcesData = (sourcesHtml) => {
+    // Extract URLs and titles from the sources HTML
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(sourcesHtml, 'text/html');
+    const chips = doc.querySelectorAll('.chip');
+    
+    return Array.from(chips).map(chip => ({
+      url: chip.href,
+      title: chip.textContent
+    }));
+  };
+
   useEffect(() => {
     const fetchDigest = async () => {
       setLoading(true);
@@ -24,10 +36,14 @@ const NewsDigest = ({ team, player }) => {
           }
         });
         
-        console.log('Response:', response.data);
-        
         if (response.data.success) {
-          setDigest(response.data);
+          const processedData = {
+            ...response.data,
+            sources: response.data.sources && response.data.sources.includes('<style>') 
+              ? cleanSourcesData(response.data.sources)
+              : response.data.sources
+          };
+          setDigest(processedData);
         } else {
           throw new Error(response.data.error || 'Failed to fetch digest');
         }
@@ -79,8 +95,26 @@ const NewsDigest = ({ team, player }) => {
       {digest.sources && (
         <div className="mt-4 pt-4 border-t border-gray-200">
           <h3 className="text-sm font-semibold text-gray-500">Sources</h3>
-          <div className="text-sm text-gray-400 mt-1">
-            {digest.sources}
+          <div className="mt-2">
+            {Array.isArray(digest.sources) ? (
+              <div className="flex flex-wrap gap-2">
+                {digest.sources.map((source, index) => (
+                  <a
+                    key={index}
+                    href={source.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-50 text-blue-700 hover:bg-blue-100"
+                  >
+                    {source.title}
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <div className="text-sm text-gray-400">
+                {digest.sources}
+              </div>
+            )}
           </div>
         </div>
       )}
