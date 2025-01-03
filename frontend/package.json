@@ -8,7 +8,8 @@
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
     "axios": "^1.6.7",
     "@headlessui/react": "^1.7.18",
-    "@heroicons/react": "^2.1.1"
+    "@heroicons/react": "^2.1.1",
+    "react-markdown": "^9.0.1"
   },
   "scripts": {
     "dev": "react-scripts start",
