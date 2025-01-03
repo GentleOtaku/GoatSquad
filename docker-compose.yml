@@ -1,8 +1,8 @@
-
-
 services:
   backend:
-    image: ghcr.io/${GITHUB_USERNAME_LOWER}/goatsquad-backend:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "5000:5000"
     environment:
@@ -13,7 +13,9 @@ services:
       - app-network
 
   frontend:
-    image: ghcr.io/${GITHUB_USERNAME_LOWER}/goatsquad-frontend:latest
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     ports:
       - "3000:3000"
     environment:
