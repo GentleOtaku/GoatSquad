@@ -1,26 +1,25 @@
+version: '3.8'
+
 services:
   backend:
-    build: ./
+    image: ghcr.io/${GITHUB_USERNAME}/mlb-fan-feed-backend:latest
     ports:
       - "5000:5000"
-    volumes:
-      - ./backend:/app
+    environment:
+      - FLASK_ENV=production
+      - FLASK_APP=app.py
+    restart: unless-stopped
     networks:
       - app-network
-    environment:
-      - FLASK_ENV=development
-      - FLASK_APP=app.py
 
   frontend:
-    build: ./frontend
+    image: ghcr.io/${GITHUB_USERNAME}/mlb-fan-feed-frontend:latest
     ports:
       - "3000:3000"
     environment:
       - REACT_APP_BACKEND_URL=http://localhost:5000
-      - WDS_SOCKET_PORT=0
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
+      - NODE_ENV=production
+    restart: unless-stopped
     networks:
       - app-network
     depends_on:
