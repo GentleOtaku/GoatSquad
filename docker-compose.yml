@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   backend:
-    image: ghcr.io/${GITHUB_USERNAME}/mlb-fan-feed-backend:latest
+    image: ghcr.io/${GITHUB_USERNAME_LOWER}/goatsquad-backend:latest
     ports:
       - "5000:5000"
     environment:
@@ -13,7 +13,7 @@ services:
       - app-network
 
   frontend:
-    image: ghcr.io/${GITHUB_USERNAME}/mlb-fan-feed-frontend:latest
+    image: ghcr.io/${GITHUB_USERNAME_LOWER}/goatsquad-frontend:latest
     ports:
       - "3000:3000"
     environment:
