@@ -11,6 +11,8 @@ services:
     restart: unless-stopped
     networks:
       - app-network
+    volumes:
+      - ./backend:/app
 
   frontend:
     build:
@@ -19,13 +21,16 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - REACT_APP_BACKEND_URL=http://localhost:5000
+      - REACT_APP_BACKEND_URL=http://backend:5000
       - NODE_ENV=production
     restart: unless-stopped
     networks:
       - app-network
     depends_on:
       - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
 
 networks:
   app-network:
