@@ -1,44 +1,65 @@
 # MLB Fan Feed
 
-A personalized MLB news and highlights application that provides team and player-specific updates using AI-powered digests.
+A personalized MLB news feed that delivers AI-powered updates about your favorite team and player.
 
 ## Features
 
-- 🏃‍♂️ Real-time MLB team and player updates
-- 🤖 AI-powered news digests using Google's Gemini API
-- 📊 Team statistics and standings
-- 🎥 MLB video highlights integration
-- 🔒 User authentication and preferences
-- 📱 Responsive design for all devices
+- 🏃‍♂️ Real-time MLB updates
+- 🤖 AI-powered news digests using Gemini
+- 📊 Team and player statistics
+- 🎥 MLB video highlights
+- 📱 Mobile-friendly design
 
-## Tech Stack
-
-### Frontend
-- React.js
-- TailwindCSS
-- React Router
-- Axios
-- React Markdown
-
-### Backend
-- Flask
-- Flask-RESTX
-- Google Gemini AI
-- Python 3.9
-
-### Infrastructure
-- Docker
-- GitHub Actions
-- Portainer
-
-## Getting Started
+## Quick Start
 
 ### Prerequisites
+
 - Node.js 16+
 - Python 3.9+
 - Docker
-- Google API Key for Gemini AI
 
-### Environment Setup
+### Setup
 
 1. Clone the repository:
+   ```bash
+   git clone https://github.com/your-username/your-repo-name.git
+   cd your-repo-name
+   ```
+
+2. Install backend dependencies:
+   ```bash
+   cd backend
+   pip install -r requirements.txt
+   ```
+
+3. Install frontend dependencies:
+   ```bash
+   cd frontend
+   npm install
+   ```
+
+### Running the Application
+
+1. Start the backend:
+   ```bash
+   cd backend
+   python app.py
+   ```
+
+2. Start the frontend:
+   ```bash
+   cd frontend
+   npm start
+   ```
+
+### Docker Setup
+
+1. Build the Docker image:
+   ```bash
+   docker-compose build
+   ```
+
+2. Run the Docker containers:
+   ```bash
+   docker-compose up
+   ```
