@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -6,7 +6,25 @@ function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { logout } = useAuth();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  // Handle clicks outside of dropdown
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    }
+
+    // Add event listener
+    document.addEventListener('mousedown', handleClickOutside);
+    
+    // Cleanup
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -14,30 +32,28 @@ function Navbar() {
   };
 
   return (
-    <nav className="bg-white shadow">
-      <div className="max-w-7xl mx-auto px-4">
+    <nav className="bg-white border-b border-gray-200 relative z-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex">
+            {/* Logo */}
             <div className="flex-shrink-0 flex items-center">
-              <h1 className="text-xl font-bold text-gray-800">MLB Fan Feed</h1>
-            </div>
-            {/* Desktop Menu */}
-            <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-              <Link
-                to="/"
-                className={`${
-                  location.pathname === '/'
-                    ? 'border-blue-500 text-gray-900'
-                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}
-              >
-                Preferences
+              <Link to="/">
+                <img
+                  src="/images/logo.svg"
+                  alt="Logo"
+                  className="h-8 w-auto"
+                />
               </Link>
+            </div>
+
+            {/* Navigation Links */}
+            <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
               <Link
                 to="/feed"
                 className={`${
                   location.pathname === '/feed'
-                    ? 'border-blue-500 text-gray-900'
+                    ? 'border-indigo-500 text-gray-900'
                     : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
                 } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}
               >
@@ -46,77 +62,74 @@ function Navbar() {
             </div>
           </div>
 
-          {/* Logout button */}
-          <div className="hidden sm:flex sm:items-center">
-            <button
-              onClick={handleLogout}
-              className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-gray-500 hover:text-gray-700 focus:outline-none"
-            >
-              Logout
-            </button>
-          </div>
-
-          {/* Mobile menu button */}
-          <div className="sm:hidden flex items-center">
-            <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
-            >
-              <span className="sr-only">Open main menu</span>
+          {/* Right side icons */}
+          <div className="flex items-center">
+            {/* Notification Bell */}
+            <button className="p-2 text-gray-400 hover:text-gray-500">
               <svg
                 className="h-6 w-6"
-                xmlns="http://www.w3.org/2000/svg"
                 fill="none"
-                viewBox="0 0 24 24"
                 stroke="currentColor"
+                viewBox="0 0 24 24"
               >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 6h16M4 12h16M4 18h16"
+                  strokeWidth="2"
+                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
                 />
               </svg>
             </button>
-          </div>
-        </div>
-      </div>
 
-      {/* Mobile menu with transition */}
-      <div 
-        className={`transform transition-all duration-300 ease-in-out ${
-          isMobileMenuOpen 
-            ? 'opacity-100 translate-y-0' 
-            : 'opacity-0 -translate-y-2 pointer-events-none'
-        } sm:hidden`}
-      >
-        <div className="pt-2 pb-3 space-y-1">
-          <Link
-            to="/"
-            className={`${
-              location.pathname === '/'
-                ? 'bg-blue-50 border-blue-500 text-blue-700'
-                : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
-            } block pl-3 pr-4 py-2 border-l-4 text-base font-medium`}
-          >
-            Preferences
-          </Link>
-          <Link
-            to="/feed"
-            className={`${
-              location.pathname === '/feed'
-                ? 'bg-blue-50 border-blue-500 text-blue-700'
-                : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
-            } block pl-3 pr-4 py-2 border-l-4 text-base font-medium`}
-          >
-            Feed
-          </Link>
-          <button
-            onClick={handleLogout}
-            className="w-full text-left block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700"
-          >
-            Logout
-          </button>
+            {/* Profile Picture with Dropdown */}
+            <div className="ml-3 relative" ref={dropdownRef}>
+              <button 
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="flex rounded-full bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+              >
+                <img
+                  className="h-8 w-8 rounded-full"
+                  src="/images/Default_pfp.jpg"
+                  alt="Profile"
+                />
+              </button>
+
+              {/* Dropdown Menu */}
+              {isDropdownOpen && (
+                <div 
+                  className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50"
+                  role="menu"
+                >
+                  <Link
+                    to="/"
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    role="menuitem"
+                    onClick={() => setIsDropdownOpen(false)}
+                  >
+                    Your Profile
+                  </Link>
+                  <Link
+                    to="/settings"
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    role="menuitem"
+                    onClick={() => setIsDropdownOpen(false)}
+                  >
+                    Settings
+                  </Link>
+                  <button
+                    onClick={() => {
+                      setIsDropdownOpen(false);
+                      handleLogout();
+                    }}
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    role="menuitem"
+                  >
+                    Sign out
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </nav>
