@@ -17,6 +17,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy backend code
 COPY backend/ .
 
-EXPOSE 5000
+# Expose the port from environment variable
+EXPOSE ${BACKEND_PORT}
 
-CMD ["python", "app.py"]
+# Use environment variables in the command
+CMD ["sh", "-c", "python app.py --host ${HOST} --port ${BACKEND_PORT}"]

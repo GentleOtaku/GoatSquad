@@ -4,10 +4,13 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "5000:5000"
+      - "${BACKEND_PORT}:${BACKEND_PORT}"
     environment:
-      - FLASK_ENV=production
-      - FLASK_APP=app.py
+      - FLASK_ENV=${FLASK_ENV}
+      - FLASK_APP=${FLASK_APP}
+      - FLASK_DEBUG=${FLASK_DEBUG}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - CORS_ORIGIN=${CORS_ORIGIN}
     env_file:
       - .env
     restart: unless-stopped
@@ -21,10 +24,13 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - "${FRONTEND_PORT}:${FRONTEND_PORT}"
     environment:
-      - REACT_APP_BACKEND_URL=http://localhost:5000
-      - NODE_ENV=production
+      - REACT_APP_BACKEND_URL=${CORS_ORIGIN}
+      - NODE_ENV=${NODE_ENV}
+    env_file:
+      - .env
+      - frontend/.env
     restart: unless-stopped
     networks:
       - app-network

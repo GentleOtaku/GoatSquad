@@ -175,3 +175,10 @@ node_modules
 # Add to existing .gitignore
 temp/
 output/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+backend/.env
+frontend/.env

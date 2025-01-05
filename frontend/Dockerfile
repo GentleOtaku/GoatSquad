@@ -8,10 +8,6 @@ COPY package*.json ./
 # Install dependencies
 RUN npm install
 
-# Install tailwindcss and typography plugin globally
-RUN npm install -g tailwindcss
-RUN npm install -D @tailwindcss/typography
-
 # Copy configuration files
 COPY tailwind.config.js .
 COPY postcss.config.js .
@@ -28,7 +24,8 @@ RUN mkdir -p src/styles && \
 RUN chown -R node:node /app
 USER node
 
-EXPOSE 3000
+# Expose the port from environment variable
+EXPOSE ${FRONTEND_PORT}
 
-# Update the start command
-CMD ["npm", "run", "dev"]
+# Update the start command to use the port from environment
+CMD ["sh", "-c", "PORT=${FRONTEND_PORT} npm run dev"]
