@@ -41,7 +41,7 @@ function Feed() {
             Choose your favorite team and player to get personalized MLB updates and highlights.
           </p>
           <Link
-            to="/"
+            to="/preferences"
             className="inline-flex items-center px-4 py-2 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800"
           >
             Choose Preferences

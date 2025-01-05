@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useDarkMode } from '../hooks/useDarkMode';
 
 function Login() {
   const [email, setEmail] = useState('');
@@ -9,6 +10,7 @@ function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { isDarkMode, toggleDarkMode } = useDarkMode();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -24,26 +26,48 @@ function Login() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-gray-50">
+    <div className={`min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
+      <div className="absolute top-4 right-4">
+        <button
+          onClick={toggleDarkMode}
+          className={`p-2 rounded-lg ${isDarkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}
+          aria-label="Toggle dark mode"
+        >
+          {isDarkMode ? (
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" 
+              />
+            </svg>
+          ) : (
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+              />
+            </svg>
+          )}
+        </button>
+      </div>
+
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         {/* Logo */}
         <div className="flex justify-center">
           <img
             src="/images/logo.svg"
             alt="Logo"
-            className="w-48 h-24"
+            className={`w-48 h-24 ${isDarkMode ? 'filter invert' : ''}`}
           />
         </div>
-        <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-gray-900">
+        <h2 className={`mt-6 text-center text-3xl font-bold tracking-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
           Sign in to your account
         </h2>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+        <div className={`py-8 px-4 shadow sm:rounded-lg sm:px-10 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="email" className={`block text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
                 Email address
               </label>
               <div className="mt-1">
@@ -53,7 +77,10 @@ function Login() {
                   type="email"
                   autoComplete="email"
                   required
-                  className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
+                  className={`block w-full appearance-none rounded-md px-3 py-2 shadow-sm focus:outline-none focus:ring-indigo-500 sm:text-sm
+                    ${isDarkMode 
+                      ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-indigo-500' 
+                      : 'border-gray-300 placeholder-gray-400 focus:border-indigo-500 bg-white text-gray-900'}`}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
@@ -61,7 +88,7 @@ function Login() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="password" className={`block text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
                 Password
               </label>
               <div className="mt-1">
@@ -71,7 +98,10 @@ function Login() {
                   type="password"
                   autoComplete="current-password"
                   required
-                  className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
+                  className={`block w-full appearance-none rounded-md px-3 py-2 shadow-sm focus:outline-none focus:ring-indigo-500 sm:text-sm
+                    ${isDarkMode 
+                      ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-indigo-500' 
+                      : 'border-gray-300 placeholder-gray-400 focus:border-indigo-500 bg-white text-gray-900'}`}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
@@ -86,13 +116,13 @@ function Login() {
                   type="checkbox"
                   className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                 />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
+                <label htmlFor="remember-me" className={`ml-2 block text-sm ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>
                   Remember me
                 </label>
               </div>
 
               <div className="text-sm">
-                <a href="#" className="font-medium text-indigo-600 hover:text-indigo-500">
+                <a href="#" className="font-medium text-indigo-500 hover:text-indigo-400">
                   Forgot password?
                 </a>
               </div>
@@ -111,17 +141,22 @@ function Login() {
           <div className="mt-6">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
+                <div className={`w-full border-t ${isDarkMode ? 'border-gray-600' : 'border-gray-300'}`} />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="bg-white px-2 text-gray-500">Or continue with</span>
+                <span className={`px-2 ${isDarkMode ? 'bg-gray-800 text-gray-400' : 'bg-white text-gray-500'}`}>
+                  Or continue with
+                </span>
               </div>
             </div>
 
             <div className="mt-6 grid grid-cols-2 gap-3">
               <button
                 type="button"
-                className="inline-flex w-full justify-center rounded-md border border-gray-300 bg-white py-2 px-4 text-sm font-medium text-gray-500 shadow-sm hover:bg-gray-50"
+                className={`inline-flex w-full justify-center rounded-md border py-2 px-4 text-sm font-medium shadow-sm hover:bg-gray-50
+                  ${isDarkMode 
+                    ? 'border-gray-600 bg-gray-700 text-gray-200 hover:bg-gray-600' 
+                    : 'border-gray-300 bg-white text-gray-500 hover:bg-gray-50'}`}
               >
                 <svg className="h-5 w-5" aria-hidden="true" viewBox="0 0 24 24">
                   <path
@@ -134,7 +169,10 @@ function Login() {
 
               <button
                 type="button"
-                className="inline-flex w-full justify-center rounded-md border border-gray-300 bg-white py-2 px-4 text-sm font-medium text-gray-500 shadow-sm hover:bg-gray-50"
+                className={`inline-flex w-full justify-center rounded-md border py-2 px-4 text-sm font-medium shadow-sm hover:bg-gray-50
+                  ${isDarkMode 
+                    ? 'border-gray-600 bg-gray-700 text-gray-200 hover:bg-gray-600' 
+                    : 'border-gray-300 bg-white text-gray-500 hover:bg-gray-50'}`}
               >
                 <svg className="h-5 w-5" aria-hidden="true" viewBox="0 0 24 24">
                   <path
@@ -148,10 +186,10 @@ function Login() {
           </div>
         </div>
 
-        {/* Free trial link - Updated text */}
-        <p className="mt-4 text-center text-sm text-gray-600">
+        {/* Free trial link */}
+        <p className={`mt-4 text-center text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
           Not a member?{' '}
-          <a href="#" className="font-medium text-indigo-600 hover:text-indigo-500">
+          <a href="#" className="font-medium text-indigo-500 hover:text-indigo-400">
             Click to sign up
           </a>
         </p>
@@ -160,8 +198,8 @@ function Login() {
       {/* Error message */}
       {error && (
         <div className="mt-4 sm:mx-auto sm:w-full sm:max-w-md">
-          <div className="rounded-md bg-red-50 p-4">
-            <div className="text-sm text-red-700">{error}</div>
+          <div className={`rounded-md p-4 ${isDarkMode ? 'bg-red-900' : 'bg-red-50'}`}>
+            <div className={`text-sm ${isDarkMode ? 'text-red-200' : 'text-red-700'}`}>{error}</div>
           </div>
         </div>
       )}

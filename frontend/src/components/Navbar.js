@@ -2,11 +2,13 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useDarkMode } from '../hooks/useDarkMode';
 import { usePreferences } from '../hooks/usePreferences';
+import { useAuth } from '../contexts/AuthContext';
 
 function Navbar() {
   const { isDarkMode, toggleDarkMode } = useDarkMode();
   const location = useLocation();
   const { user } = usePreferences();
+  const { logout } = useAuth();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
   const buttonRef = useRef(null);
@@ -149,7 +151,7 @@ function Navbar() {
                     Profile Settings
                   </Link>
                   <Link
-                    to="/user-preferences"
+                    to="/preferences"
                     className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                     onClick={() => setIsDropdownOpen(false)}
                     role="menuitem"
@@ -158,8 +160,9 @@ function Navbar() {
                   </Link>
                   <button
                     onClick={() => {
-                      // Handle logout
+                      logout();
                       setIsDropdownOpen(false);
+                      window.location.href = '/login';
                     }}
                     className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                     role="menuitem"

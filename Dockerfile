@@ -11,14 +11,13 @@ RUN apt-get update && apt-get install -y \
 # Copy requirements first to leverage Docker cache
 COPY backend/requirements.txt .
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Install Python dependencies with pip upgrade
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Copy backend code
 COPY backend/ .
 
-# Expose the port from environment variable
-EXPOSE ${BACKEND_PORT}
+EXPOSE 5000
 
-# Use environment variables in the command
-CMD ["sh", "-c", "python app.py --host ${HOST} --port ${BACKEND_PORT}"]
+CMD ["python", "app.py"]

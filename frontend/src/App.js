@@ -4,7 +4,7 @@ import MainLayout from './layouts/MainLayout';
 import Home from './pages/Home';
 import News from './pages/News';
 import Calendar from './components/Calendar';
-import UserPreferences from './pages/UserPreferences';
+import Preferences from './pages/Preferences';
 import Login from './pages/Login';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider } from './contexts/AuthContext';
@@ -36,10 +36,10 @@ function App() {
               </MainLayout>
             </ProtectedRoute>
           } />
-          <Route path="/user-preferences" element={
+          <Route path="/preferences" element={
             <ProtectedRoute>
               <MainLayout>
-                <UserPreferences />
+                <Preferences />
               </MainLayout>
             </ProtectedRoute>
           } />
