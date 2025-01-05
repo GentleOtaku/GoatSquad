@@ -1,9 +1,17 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 function Navbar() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   return (
     <nav className="bg-white shadow">
@@ -36,6 +44,16 @@ function Navbar() {
                 Feed
               </Link>
             </div>
+          </div>
+
+          {/* Logout button */}
+          <div className="hidden sm:flex sm:items-center">
+            <button
+              onClick={handleLogout}
+              className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-gray-500 hover:text-gray-700 focus:outline-none"
+            >
+              Logout
+            </button>
           </div>
 
           {/* Mobile menu button */}
@@ -87,6 +105,12 @@ function Navbar() {
           >
             Feed
           </Link>
+          <button
+            onClick={handleLogout}
+            className="w-full text-left block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700"
+          >
+            Logout
+          </button>
         </div>
       </div>
     </nav>

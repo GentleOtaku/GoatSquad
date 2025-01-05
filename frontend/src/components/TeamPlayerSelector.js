@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-const TeamPlayerSelector = ({ onSelect }) => {
+function TeamPlayerSelector({ onSelect, initialTeam, initialPlayer }) {
   const [teams, setTeams] = useState([]);
-  const [selectedTeam, setSelectedTeam] = useState(null);
+  const [selectedTeam, setSelectedTeam] = useState(initialTeam || null);
   const [roster, setRoster] = useState([]);
-  const [selectedPlayer, setSelectedPlayer] = useState(null);
+  const [selectedPlayer, setSelectedPlayer] = useState(initialPlayer || null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -40,6 +40,15 @@ const TeamPlayerSelector = ({ onSelect }) => {
 
     fetchRoster();
   }, [selectedTeam]);
+
+  useEffect(() => {
+    if (initialTeam && !selectedTeam) {
+      setSelectedTeam(initialTeam);
+    }
+    if (initialPlayer && !selectedPlayer) {
+      setSelectedPlayer(initialPlayer);
+    }
+  }, [initialTeam, initialPlayer]);
 
   const handleTeamSelect = (team) => {
     setSelectedTeam(team);
@@ -106,6 +115,6 @@ const TeamPlayerSelector = ({ onSelect }) => {
       )}
     </div>
   );
-};
+}
 
 export default TeamPlayerSelector; 
