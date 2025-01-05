@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
-import Navbar from './components/Navbar';
+import MainLayout from './layouts/MainLayout';
 import UserPreferences from './pages/UserPreferences';
 import Feed from './pages/Feed';
 import Login from './pages/Login';
@@ -18,12 +18,9 @@ function App() {
               path="/"
               element={
                 <ProtectedRoute>
-                  <>
-                    <Navbar />
-                    <main className="container mx-auto px-4 py-8">
-                      <UserPreferences />
-                    </main>
-                  </>
+                  <MainLayout>
+                    <UserPreferences />
+                  </MainLayout>
                 </ProtectedRoute>
               }
             />
@@ -31,12 +28,9 @@ function App() {
               path="/feed"
               element={
                 <ProtectedRoute>
-                  <>
-                    <Navbar />
-                    <main className="container mx-auto px-4 py-8">
-                      <Feed />
-                    </main>
-                  </>
+                  <MainLayout>
+                    <Feed />
+                  </MainLayout>
                 </ProtectedRoute>
               }
             />

@@ -31,24 +31,24 @@ def get_news_digest(team_name, player_name):
         
         # Create the content structure with search-enabled prompt
         prompt = f"""
-        Using real-time information from search:
+        Generate a concise MLB update focusing on {team_name} and {player_name}. Include:
 
-        # {team_name} Team Update
-        [Search for and provide current team standings, recent game results, and key statistics]
+        # Team Update
+        - Current standings
+        - Recent performance
+        - Key statistics
 
-        # {player_name} Spotlight
-        [Search for and share latest performance metrics, recent games, and any news]
+        # Player Spotlight
+        - Recent performance
+        - Season statistics
+        - Notable achievements
 
-        # Upcoming Games & Milestones
-        [Search for and list upcoming games, potential milestones, and key matchups]
+        # Looking Ahead
+        - Upcoming games
+        - Key matchups
+        - Potential milestones
 
-        Format requirements:
-        - Use markdown formatting
-        - Start each section directly with content
-        - Use bullet points for lists
-        - Include statistics where relevant
-        - Bold (**) key numbers and achievements
-        - Use blockquotes (>) for notable quotes or highlights
+        Format in markdown, use bullet points, and bold (**) key numbers. Remove any introductory phrases and start directly with the content.
         """
 
         # Generate content with search enabled
@@ -69,9 +69,27 @@ def get_news_digest(team_name, player_name):
            hasattr(response.candidates[0].grounding_metadata, 'search_entry_point'):
             search_content = response.candidates[0].grounding_metadata.search_entry_point.rendered_content
 
+        # Clean up the response text by removing any introductory phrases
+        content = response.text
+        # Remove common introductory phrases
+        intro_phrases = [
+            "Here's the requested information",
+            "Based on the latest information",
+            "Here's a summary",
+            "Let me provide you with",
+            "Here's what I found",
+            "Using real-time search",
+            "Based on real-time data",
+            "Here's the current information"
+        ]
+        
+        for phrase in intro_phrases:
+            if content.lower().startswith(phrase.lower()):
+                content = content[len(phrase):].lstrip(',:.\n ')
+
         return {
             'success': True,
-            'digest': response.text,
+            'digest': content,
             'sources': search_content or "Generated using Google Gemini AI with web search"
         }
 
