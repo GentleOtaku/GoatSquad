@@ -4,4 +4,47 @@
 
 body {
   @apply bg-gray-50;
+}
+
+/* Custom animation classes */
+@layer utilities {
+  .fade-in {
+    @apply opacity-0;
+    animation: fadeIn 0.3s ease-in forwards;
+  }
+
+  .slide-up {
+    @apply opacity-0 translate-y-4;
+    animation: slideUp 0.4s ease-out forwards;
+  }
+
+  .scale-in {
+    @apply opacity-0 scale-95;
+    animation: scaleIn 0.2s ease-out forwards;
+  }
+
+  /* Custom transition utility */
+  .smooth-transition {
+    @apply transition-all duration-200 ease-in-out;
+  }
+}
+
+@keyframes fadeIn {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 } 

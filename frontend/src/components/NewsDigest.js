@@ -46,7 +46,7 @@ function NewsDigest({ team, player }) {
 
   if (loading) {
     return (
-      <div className="p-6 bg-white rounded-lg shadow">
+      <div className="p-6 bg-white rounded-lg shadow fade-in">
         <div className="animate-pulse">
           <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
           <div className="h-4 bg-gray-200 rounded w-1/2"></div>
@@ -70,7 +70,7 @@ function NewsDigest({ team, player }) {
   const sourceLinks = digest.sources ? parseSourceLinks(digest.sources) : [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 slide-up">
       <div className="p-6 bg-white rounded-lg shadow">
         <h2 className="text-2xl font-bold mb-4">Latest News</h2>
         <div className="prose max-w-none">

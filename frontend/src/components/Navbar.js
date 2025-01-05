@@ -82,8 +82,14 @@ function Navbar() {
         </div>
       </div>
 
-      {/* Mobile menu */}
-      <div className={`${isMobileMenuOpen ? 'block' : 'hidden'} sm:hidden`}>
+      {/* Mobile menu with transition */}
+      <div 
+        className={`transform transition-all duration-300 ease-in-out ${
+          isMobileMenuOpen 
+            ? 'opacity-100 translate-y-0' 
+            : 'opacity-0 -translate-y-2 pointer-events-none'
+        } sm:hidden`}
+      >
         <div className="pt-2 pb-3 space-y-1">
           <Link
             to="/"

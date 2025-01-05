@@ -17,7 +17,7 @@ function Feed() {
 
   if (!preferences) {
     return (
-      <div className="min-h-[80vh] flex items-center justify-center">
+      <div className="min-h-[80vh] flex items-center justify-center fade-in">
         <div className="text-center max-w-md mx-auto p-6 bg-white rounded-lg shadow">
           <div className="mb-6">
             <svg 
@@ -52,7 +52,7 @@ function Feed() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 slide-up">
       <NewsDigest team={preferences.team} player={preferences.player} />
     </div>
   );
