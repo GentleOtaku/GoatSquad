@@ -34,6 +34,16 @@ function NewsDigest({ team, player }) {
     fetchDigest();
   }, [team, player]);
 
+  const parseSourceLinks = (sourcesHtml) => {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(sourcesHtml, 'text/html');
+    const links = doc.querySelectorAll('a.chip');
+    return Array.from(links).map(link => ({
+      text: link.textContent,
+      url: link.href
+    }));
+  };
+
   if (loading) {
     return (
       <div className="p-6 bg-white rounded-lg shadow">
@@ -57,6 +67,8 @@ function NewsDigest({ team, player }) {
 
   if (!digest) return null;
 
+  const sourceLinks = digest.sources ? parseSourceLinks(digest.sources) : [];
+
   return (
     <div className="space-y-6">
       <div className="p-6 bg-white rounded-lg shadow">
@@ -64,9 +76,21 @@ function NewsDigest({ team, player }) {
         <div className="prose max-w-none">
           <ReactMarkdown>{digest.digest}</ReactMarkdown>
         </div>
-        {digest.sources && (
-          <div className="mt-4 text-sm text-gray-500">
-            Source: {digest.sources}
+        {sourceLinks.length > 0 && (
+          <div className="mt-6">
+            <div className="flex flex-wrap gap-2">
+              {sourceLinks.map((link, index) => (
+                <a
+                  key={index}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center px-4 py-2 rounded-full text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+                >
+                  {link.text}
+                </a>
+              ))}
+            </div>
           </div>
         )}
       </div>

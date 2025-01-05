@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 import logging
+from bs4 import BeautifulSoup
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -80,3 +81,17 @@ def get_news_digest(team_name, player_name):
             'success': False,
             'error': str(e)
         } 
+
+def clean_source_links(sources_html):
+    """Clean and extract source links from Google's HTML"""
+    soup = BeautifulSoup(sources_html, 'html.parser')
+    links = soup.select('a.chip')
+    
+    cleaned_sources = []
+    for link in links:
+        cleaned_sources.append({
+            'text': link.get_text(),
+            'url': link.get('href')
+        })
+    
+    return cleaned_sources 

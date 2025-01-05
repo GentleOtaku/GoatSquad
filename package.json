@@ -1,5 +1,8 @@
 {
   "devDependencies": {
     "@tailwindcss/aspect-ratio": "^0.4.2"
+  },
+  "dependencies": {
+    "react-router-dom": "^7.1.1"
   }
 }
