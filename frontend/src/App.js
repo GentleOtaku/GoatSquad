@@ -6,6 +6,7 @@ import UserPreferences from './pages/UserPreferences';
 import Feed from './pages/Feed';
 import Login from './pages/Login';
 import ProtectedRoute from './components/ProtectedRoute';
+import Calendar from './components/Calendar';
 
 function App() {
   return (
@@ -30,6 +31,16 @@ function App() {
                 <ProtectedRoute>
                   <MainLayout>
                     <Feed />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/calendar"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <Calendar />
                   </MainLayout>
                 </ProtectedRoute>
               }
