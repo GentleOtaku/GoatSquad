@@ -1,41 +1,38 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 
 const AuthContext = createContext(null);
 
-export const AuthProvider = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(null);
 
-  useEffect(() => {
-    // Check if user is logged in on mount
-    const token = localStorage.getItem('authToken');
-    setIsAuthenticated(!!token);
-    setIsLoading(false);
-  }, []);
-
-  const login = (token) => {
-    localStorage.setItem('authToken', token);
-    setIsAuthenticated(true);
+  const login = (userData) => {
+    setUser(userData);
+    // You can add more login logic here
   };
 
   const logout = () => {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('selectedTeam');
-    localStorage.removeItem('selectedPlayer');
-    setIsAuthenticated(false);
+    setUser(null);
+    // You can add more logout logic here
+  };
+
+  const value = {
+    user,
+    login,
+    logout,
+    isAuthenticated: !!user
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading, login, logout }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
-};
+}
 
-export const useAuth = () => {
+export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-}; 
+} 

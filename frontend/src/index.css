@@ -2,8 +2,39 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  @apply bg-gray-50;
+@layer base {
+  body {
+    @apply bg-gray-50 dark:bg-gray-900 transition-colors duration-200;
+  }
+
+  /* Add smooth transitions for all color changes */
+  *, *::before, *::after {
+    @apply transition-colors duration-200;
+  }
+
+  /* Style scrollbars in dark mode */
+  @media (prefers-color-scheme: dark) {
+    ::-webkit-scrollbar {
+      width: 12px;
+    }
+
+    ::-webkit-scrollbar-track {
+      @apply bg-gray-800;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      @apply bg-gray-600 rounded-full;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      @apply bg-gray-500;
+    }
+  }
+}
+
+/* Additional utility classes for dark mode transitions */
+.dark-mode-transition {
+  @apply transition-colors duration-200;
 }
 
 /* Custom animation classes */

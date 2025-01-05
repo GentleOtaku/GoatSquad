@@ -1,137 +1,167 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { Link, useLocation } from 'react-router-dom';
+import { useDarkMode } from '../hooks/useDarkMode';
+import { usePreferences } from '../hooks/usePreferences';
 
 function Navbar() {
+  const { isDarkMode, toggleDarkMode } = useDarkMode();
   const location = useLocation();
-  const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { user } = usePreferences();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const buttonRef = useRef(null);
 
-  // Handle clicks outside of dropdown
   useEffect(() => {
     function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+      if (
+        dropdownRef.current && 
+        !dropdownRef.current.contains(event.target) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(event.target)
+      ) {
         setIsDropdownOpen(false);
       }
     }
 
-    // Add event listener
-    document.addEventListener('mousedown', handleClickOutside);
-    
+    // Add event listener when dropdown is open
+    if (isDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+
     // Cleanup
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
     };
-  }, []);
+  }, [isDropdownOpen]);
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
+  const isActive = (path) => {
+    return location.pathname === path;
   };
 
   return (
-    <nav className="bg-white border-b border-gray-200 relative z-50">
+    <nav className="bg-white dark:bg-gray-800 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
-          <div className="flex">
-            {/* Logo */}
-            <div className="flex-shrink-0 flex items-center">
-              <Link to="/">
-                <img
-                  src="/images/logo.svg"
-                  alt="Logo"
-                  className="h-8 w-auto"
-                />
-              </Link>
-            </div>
-
+          <div className="flex items-center">
+            <img 
+              src="/images/logo.svg" 
+              alt="Logo" 
+              className="h-8 w-auto filter dark:invert"
+            />
+            
             {/* Navigation Links */}
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
               <Link
-                to="/feed"
+                to="/"
                 className={`${
-                  location.pathname === '/feed'
-                    ? 'border-indigo-500 text-gray-900'
-                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                  isActive('/home') 
+                    ? 'border-blue-500 text-gray-900 dark:text-white' 
+                    : 'border-transparent text-gray-500 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
                 } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}
               >
-                Feed
+                Home
               </Link>
               <Link
                 to="/calendar"
                 className={`${
-                  location.pathname === '/calendar'
-                    ? 'border-indigo-500 text-gray-900'
-                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                  isActive('/calendar')
+                    ? 'border-blue-500 text-gray-900 dark:text-white'
+                    : 'border-transparent text-gray-500 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
                 } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}
               >
                 Calendar
               </Link>
+              <Link
+                to="/news"
+                className={`${
+                  isActive('/news')
+                    ? 'border-blue-500 text-gray-900 dark:text-white'
+                    : 'border-transparent text-gray-500 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
+                } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}
+              >
+                News
+              </Link>
             </div>
           </div>
-
-          {/* Right side icons */}
-          <div className="flex items-center">
-            {/* Notification Bell */}
-            <button className="p-2 text-gray-400 hover:text-gray-500">
-              <svg
-                className="h-6 w-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                />
-              </svg>
+          
+          {/* Right side - Dark mode toggle and Profile */}
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={toggleDarkMode}
+              className="p-2 rounded-lg text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+              aria-label="Toggle dark mode"
+            >
+              {isDarkMode ? (
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                    d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" 
+                  />
+                </svg>
+              ) : (
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                    d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+                  />
+                </svg>
+              )}
             </button>
 
-            {/* Profile Picture with Dropdown */}
-            <div className="ml-3 relative" ref={dropdownRef}>
-              <button 
+            {/* Profile Dropdown */}
+            <div className="relative">
+              <button
+                ref={buttonRef}
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="flex rounded-full bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                className="flex items-center space-x-2 focus:outline-none"
+                aria-expanded={isDropdownOpen}
+                aria-haspopup="true"
               >
-                <img
-                  className="h-8 w-8 rounded-full"
-                  src="/images/Default_pfp.jpg"
-                  alt="Profile"
-                />
+                <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                  {user?.photoURL ? (
+                    <img
+                      src={user.photoURL}
+                      alt="Profile"
+                      className="w-8 h-8 rounded-full"
+                    />
+                  ) : (
+                    <svg className="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  )}
+                </div>
               </button>
 
-              {/* Dropdown Menu */}
               {isDropdownOpen && (
                 <div 
-                  className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50"
+                  ref={dropdownRef}
+                  className="absolute right-0 mt-2 w-48 py-2 bg-white dark:bg-gray-800 rounded-md shadow-xl z-50 border border-gray-200 dark:border-gray-700"
                   role="menu"
+                  aria-orientation="vertical"
+                  aria-labelledby="user-menu"
                 >
                   <Link
-                    to="/"
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    role="menuitem"
+                    to="/profile"
+                    className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                     onClick={() => setIsDropdownOpen(false)}
+                    role="menuitem"
                   >
-                    Your Profile
+                    Profile Settings
                   </Link>
                   <Link
-                    to="/settings"
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    role="menuitem"
+                    to="/user-preferences"
+                    className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                     onClick={() => setIsDropdownOpen(false)}
+                    role="menuitem"
                   >
-                    Settings
+                    Preferences
                   </Link>
                   <button
                     onClick={() => {
+                      // Handle logout
                       setIsDropdownOpen(false);
-                      handleLogout();
                     }}
-                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                     role="menuitem"
                   >
                     Sign out

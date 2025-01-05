@@ -35,11 +35,11 @@ function UserPreferences() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">
+      <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">
         Customize Your Feed
       </h1>
 
-      <div className="bg-white shadow rounded-lg p-6">
+      <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
         <TeamPlayerSelector
           onSelect={handleSelection}
           initialTeam={selection.team}
@@ -48,14 +48,14 @@ function UserPreferences() {
         
         {/* Selection Summary */}
         {(selection.team || selection.player) && (
-          <div className="mt-8 p-4 bg-gray-50 rounded-md">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Your Selection</h3>
+          <div className="mt-8 p-4 bg-gray-50 dark:bg-gray-700 rounded-md">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Your Selection</h3>
             <div className="space-y-2">
-              <p className="text-sm text-gray-600">
-                Team: <span className="font-medium text-gray-900">{selection.team?.name || 'Not selected'}</span>
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                Team: <span className="font-medium text-gray-900 dark:text-white">{selection.team?.name || 'Not selected'}</span>
               </p>
-              <p className="text-sm text-gray-600">
-                Player: <span className="font-medium text-gray-900">{selection.player?.fullName || 'Not selected'}</span>
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                Player: <span className="font-medium text-gray-900 dark:text-white">{selection.player?.fullName || 'Not selected'}</span>
               </p>
             </div>
           </div>
@@ -69,11 +69,11 @@ function UserPreferences() {
             className={`
               inline-flex items-center px-6 py-3 border border-transparent 
               rounded-md shadow-sm text-base font-medium text-white w-full sm:w-auto
-              justify-center
+              justify-center transition-colors duration-200
               ${
                 isSaving || !selection.team || !selection.player
-                  ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
+                  ? 'bg-gray-400 dark:bg-gray-600 cursor-not-allowed'
+                  : 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800'
               }
             `}
           >
@@ -99,7 +99,7 @@ function UserPreferences() {
                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                   />
                 </svg>
-                Saving...
+                <span className="text-white dark:text-gray-100">Saving...</span>
               </>
             ) : (
               'Save Preferences'
