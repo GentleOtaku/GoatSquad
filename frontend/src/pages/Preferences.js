@@ -25,6 +25,8 @@ function Preferences() {
     localStorage.setItem('selectedTeam', JSON.stringify(selection.team));
     localStorage.setItem('selectedPlayer', JSON.stringify(selection.player));
     
+    window.dispatchEvent(new Event('preferenceUpdate'));
+    
     setTimeout(() => {
       setIsSaving(false);
       navigate('/news');

@@ -6,13 +6,45 @@ function Feed() {
   const [preferences, setPreferences] = useState(null);
 
   useEffect(() => {
-    // Load saved preferences
+    // Load initial preferences
+    loadPreferences();
+
+    // Add event listener for storage changes
+    window.addEventListener('storage', handleStorageChange);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
+  const loadPreferences = () => {
     const savedTeam = JSON.parse(localStorage.getItem('selectedTeam'));
     const savedPlayer = JSON.parse(localStorage.getItem('selectedPlayer'));
     
     if (savedTeam && savedPlayer) {
       setPreferences({ team: savedTeam, player: savedPlayer });
     }
+  };
+
+  const handleStorageChange = (e) => {
+    // Reload preferences when localStorage changes
+    if (e.key === 'selectedTeam' || e.key === 'selectedPlayer') {
+      loadPreferences();
+    }
+  };
+
+  // Create a custom event listener for preference updates
+  useEffect(() => {
+    const handlePreferenceUpdate = () => {
+      loadPreferences();
+    };
+
+    window.addEventListener('preferenceUpdate', handlePreferenceUpdate);
+
+    return () => {
+      window.removeEventListener('preferenceUpdate', handlePreferenceUpdate);
+    };
   }, []);
 
   if (!preferences) {

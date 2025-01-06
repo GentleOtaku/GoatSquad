@@ -42,17 +42,17 @@ function TeamPlayerSelector({ onSelect, initialTeam, initialPlayer }) {
   }, [selectedTeam]);
 
   useEffect(() => {
-    if (initialTeam && !selectedTeam) {
+    if (initialTeam && initialPlayer) {
       setSelectedTeam(initialTeam);
-    }
-    if (initialPlayer && !selectedPlayer) {
       setSelectedPlayer(initialPlayer);
+      onSelect({ team: initialTeam, player: initialPlayer });
     }
   }, [initialTeam, initialPlayer]);
 
   const handleTeamSelect = (team) => {
     setSelectedTeam(team);
     setSelectedPlayer(null);
+    onSelect({ team, player: null });
   };
 
   const handlePlayerSelect = (player) => {
