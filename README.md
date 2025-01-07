@@ -25,14 +25,15 @@ A personalized MLB news feed that delivers AI-powered updates about your favorit
    git clone https://github.com/your-username/your-repo-name.git
    cd your-repo-name
    ```
-
-2. Install backend dependencies:
+2. Edit .env files (there should be 2) 
+   
+3. Install backend dependencies:
    ```bash
    cd backend
    pip install -r requirements.txt
    ```
 
-3. Install frontend dependencies:
+4. Install frontend dependencies:
    ```bash
    cd frontend
    npm install
