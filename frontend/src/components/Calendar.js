@@ -1,54 +1,63 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday } from 'date-fns';
+import { usePreferences } from '../hooks/usePreferences';
 
 function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedTeam, setSelectedTeam] = useState(null);
-
-  useEffect(() => {
-    // Load saved preferences
-    const savedTeam = JSON.parse(localStorage.getItem('selectedTeam'));
-    setSelectedTeam(savedTeam);
-  }, []);
+  const { preferences } = usePreferences();
 
   useEffect(() => {
     const fetchGames = async () => {
-      if (!selectedTeam) return;
+      if (!preferences?.teams?.length) return;
       
       setLoading(true);
       try {
         const startDate = format(startOfMonth(currentDate), 'yyyy-MM-dd');
         const endDate = format(endOfMonth(currentDate), 'yyyy-MM-dd');
         
-        const response = await axios.get(`https://statsapi.mlb.com/api/v1/schedule`, {
-          params: {
-            startDate,
-            endDate,
-            sportId: 1,
-            teamId: selectedTeam.id,
-            hydrate: 'team,venue'
-          }
-        });
-
-        // Transform the MLB data into our event format
-        const transformedEvents = response.data.dates.flatMap(date => 
-          date.games.map(game => ({
-            id: game.gamePk,
-            title: `${game.teams.away.team.name} @ ${game.teams.home.team.name}`,
-            date: new Date(game.gameDate),
-            venue: game.venue.name,
-            time: format(new Date(game.gameDate), 'h:mm a'),
-            isHome: game.teams.home.team.id === selectedTeam.id,
-            opponent: game.teams.home.team.id === selectedTeam.id 
-              ? game.teams.away.team.name 
-              : game.teams.home.team.name
-          }))
+        // Fetch games for all followed teams
+        const gamePromises = preferences.teams.map(team => 
+          axios.get(`https://statsapi.mlb.com/api/v1/schedule`, {
+            params: {
+              startDate,
+              endDate,
+              sportId: 1,
+              teamId: team.id,
+              hydrate: 'team,venue'
+            }
+          })
         );
 
-        setEvents(transformedEvents);
+        const responses = await Promise.all(gamePromises);
+        
+        // Combine and transform all games
+        const allEvents = responses.flatMap(response => {
+          const teamId = response.config.params.teamId;
+          const team = preferences.teams.find(t => t.id === teamId);
+          
+          return response.data.dates.flatMap(date => 
+            date.games.map(game => ({
+              id: game.gamePk,
+              title: `${game.teams.away.team.name} @ ${game.teams.home.team.name}`,
+              date: new Date(game.gameDate),
+              venue: game.venue.name,
+              time: format(new Date(game.gameDate), 'h:mm a'),
+              isHome: game.teams.home.team.id === team.id,
+              opponent: game.teams.home.team.id === team.id 
+                ? game.teams.away.team.name 
+                : game.teams.home.team.name,
+              teamName: team.name,
+              teamColor: getTeamColor(team.name) // Add team color for visual distinction
+            }))
+          );
+        });
+
+        // Sort events by date and time
+        const sortedEvents = allEvents.sort((a, b) => a.date - b.date);
+        setEvents(sortedEvents);
       } catch (error) {
         console.error('Error fetching MLB games:', error);
       } finally {
@@ -57,7 +66,7 @@ function Calendar() {
     };
 
     fetchGames();
-  }, [currentDate, selectedTeam]);
+  }, [currentDate, preferences?.teams]);
 
   const daysInMonth = eachDayOfInterval({
     start: startOfMonth(currentDate),
@@ -72,13 +81,25 @@ function Calendar() {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1));
   };
 
-  if (!selectedTeam) {
+  // Helper function to get team color (you can expand this with actual team colors)
+  const getTeamColor = (teamName) => {
+    const colors = {
+      'New York Yankees': 'navy',
+      'Boston Red Sox': 'red',
+      'Los Angeles Dodgers': 'blue',
+      // Add more team colors as needed
+      'default': 'gray'
+    };
+    return colors[teamName] || colors.default;
+  };
+
+  if (!preferences?.teams?.length) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">No team selected</h3>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">No teams selected</h3>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Please select a team in your profile preferences to view the calendar.
+            Please select teams in your profile preferences to view their schedules.
           </p>
         </div>
       </div>
@@ -90,7 +111,7 @@ function Calendar() {
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
-            {selectedTeam.name} Schedule
+            Team Schedules
           </h2>
           
           <div className="flex items-center space-x-4">
@@ -153,23 +174,14 @@ function Calendar() {
                           ? 'bg-green-100 dark:bg-green-900/40' 
                           : 'bg-gray-100 dark:bg-gray-700'
                       }`}>
-                        <svg className={`w-6 h-6 ${
-                          event.isHome 
-                            ? 'text-green-600 dark:text-green-400' 
-                            : 'text-gray-600 dark:text-gray-400'
-                        }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                            d={event.isHome 
-                              ? "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" 
-                              : "M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"
-                            }
-                          />
-                        </svg>
+                        <span className="text-xs font-medium" style={{ color: event.teamColor }}>
+                          {event.teamName.substring(0, 3).toUpperCase()}
+                        </span>
                       </div>
                     </div>
                     <div className="ml-4">
                       <h4 className="text-sm font-medium text-gray-900 dark:text-white">
-                        {event.isHome ? 'vs' : '@'} {event.opponent}
+                        {event.teamName} {event.isHome ? 'vs' : '@'} {event.opponent}
                       </h4>
                       <div className="mt-1 flex items-center text-sm text-gray-500 dark:text-gray-400">
                         <svg className="flex-shrink-0 mr-1.5 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -217,18 +229,25 @@ function Calendar() {
                       `}
                     >
                       <div className="text-right text-sm">{format(day, 'd')}</div>
-                      {dayEvents.map(event => (
-                        <div
-                          key={event.id}
-                          className={`mt-1 text-xs truncate rounded p-1 ${
-                            event.isHome 
-                              ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300' 
-                              : 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
-                          }`}
-                        >
-                          {event.time} - {event.isHome ? 'vs' : '@'} {event.opponent}
-                        </div>
-                      ))}
+                      <div className="space-y-1">
+                        {dayEvents.map(event => (
+                          <div
+                            key={event.id}
+                            className="mt-1 text-xs truncate rounded p-1 flex items-center space-x-1"
+                            style={{
+                              backgroundColor: `${event.teamColor}20`,
+                              borderLeft: `3px solid ${event.teamColor}`
+                            }}
+                          >
+                            <span className="font-medium" style={{ color: event.teamColor }}>
+                              {event.teamName.substring(0, 3).toUpperCase()}
+                            </span>
+                            <span className="text-gray-700 dark:text-gray-300">
+                              {event.time} {event.isHome ? 'vs' : '@'} {event.opponent}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   );
                 })}

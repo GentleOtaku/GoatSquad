@@ -6,6 +6,8 @@ export const API_ENDPOINTS = {
 
 export const STORAGE_KEYS = {
   AUTH_TOKEN: 'authToken',
+  FOLLOWED_TEAMS: 'followedTeams',
+  FOLLOWED_PLAYERS: 'followedPlayers',
   SELECTED_TEAM: 'selectedTeam',
   SELECTED_PLAYER: 'selectedPlayer'
 };

@@ -1,30 +1,70 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import TeamPlayerSelector from '../components/TeamPlayerSelector';
+import { usePreferences } from '../hooks/usePreferences';
 
 function Preferences() {
   const navigate = useNavigate();
-  const [selection, setSelection] = useState({
-    team: JSON.parse(localStorage.getItem('selectedTeam')),
-    player: JSON.parse(localStorage.getItem('selectedPlayer'))
-  });
+  const { preferences, followTeam, unfollowTeam, followPlayer, unfollowPlayer } = usePreferences();
   const [isSaving, setIsSaving] = useState(false);
+  const [allTeams, setAllTeams] = useState([]);
+  const [playerData, setPlayerData] = useState({});
+
+  // Fetch all teams on mount to ensure we have team data
+  useEffect(() => {
+    const fetchTeams = async () => {
+      try {
+        const response = await axios.get('https://statsapi.mlb.com/api/v1/teams?sportId=1');
+        setAllTeams(response.data.teams);
+      } catch (error) {
+        console.error('Error fetching teams:', error);
+      }
+    };
+
+    fetchTeams();
+  }, []);
+
+  // Fetch player data for followed players
+  useEffect(() => {
+    const fetchPlayerData = async () => {
+      if (!preferences?.players) return;
+
+      const newPlayerData = { ...playerData };
+      const playersToFetch = preferences.players.filter(p => !playerData[p.id]);
+
+      for (const player of playersToFetch) {
+        try {
+          const response = await axios.get(`https://statsapi.mlb.com/api/v1/people/${player.id}`);
+          newPlayerData[player.id] = response.data.people[0];
+        } catch (error) {
+          console.error(`Error fetching data for player ${player.id}:`, error);
+        }
+      }
+
+      if (Object.keys(newPlayerData).length > Object.keys(playerData).length) {
+        setPlayerData(newPlayerData);
+      }
+    };
+
+    fetchPlayerData();
+  }, [preferences?.players]);
 
   const handleSelection = ({ team, player }) => {
-    setSelection({ team, player });
+    if (team) followTeam(team);
+    if (player) followPlayer(player);
+  };
+
+  const handleUnfollowTeam = (teamId) => {
+    unfollowTeam(teamId);
+  };
+
+  const handleUnfollowPlayer = (playerId) => {
+    unfollowPlayer(playerId);
   };
 
   const handleSave = () => {
-    if (!selection.team || !selection.player) {
-      alert('Please select both a team and a player before saving.');
-      return;
-    }
-
     setIsSaving(true);
-    
-    localStorage.setItem('selectedTeam', JSON.stringify(selection.team));
-    localStorage.setItem('selectedPlayer', JSON.stringify(selection.player));
-    
     window.dispatchEvent(new Event('preferenceUpdate'));
     
     setTimeout(() => {
@@ -36,7 +76,7 @@ function Preferences() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">
-        Customize Your Feed
+        Follow Teams & Players
       </h1>
 
       <div className="flex flex-col lg:flex-row gap-8">
@@ -45,53 +85,78 @@ function Preferences() {
           <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
             <TeamPlayerSelector
               onSelect={handleSelection}
-              initialTeam={selection.team}
-              initialPlayer={selection.player}
+              followedTeams={preferences?.teams || []}
+              followedPlayers={preferences?.players || []}
             />
           </div>
         </div>
 
         {/* Right sidebar - Selection summary and save button */}
-        <div className="lg:w-80">
+        <div className="lg:w-96">
           <div className="sticky top-8">
             <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 space-y-6">
-              {/* Selection Summary */}
+              {/* Followed Teams */}
               <div>
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Your Selection</h3>
-                <div className="space-y-4">
-                  <div className="bg-gray-50 dark:bg-gray-700 rounded-md p-4">
-                    <p className="text-sm text-gray-600 dark:text-gray-300">
-                      Team
-                    </p>
-                    <p className="mt-1 font-medium text-gray-900 dark:text-white">
-                      {selection.team?.name || 'Not selected'}
-                    </p>
-                  </div>
-                  <div className="bg-gray-50 dark:bg-gray-700 rounded-md p-4">
-                    <p className="text-sm text-gray-600 dark:text-gray-300">
-                      Player
-                    </p>
-                    <p className="mt-1 font-medium text-gray-900 dark:text-white">
-                      {selection.player?.fullName || 'Not selected'}
-                    </p>
-                  </div>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Followed Teams</h3>
+                <div className="space-y-2">
+                  {preferences?.teams?.filter(team => team.name).map(team => (
+                    <div key={team.id} 
+                      className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                    >
+                      <span className="text-gray-900 dark:text-white">
+                        {team.name}
+                      </span>
+                      <button
+                        onClick={() => handleUnfollowTeam(team.id)}
+                        className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                      >
+                        Unfollow
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Followed Players */}
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Followed Players</h3>
+                <div className="space-y-2">
+                  {preferences?.players?.filter(player => player.fullName).map(player => {
+                    const fullPlayerData = playerData[player.id] || player;
+                    return (
+                      <div key={player.id} 
+                        className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                      >
+                        <div className="flex flex-col">
+                          <span className="text-gray-900 dark:text-white">
+                            {fullPlayerData.fullName}
+                          </span>
+                          {fullPlayerData.primaryPosition && (
+                            <span className="text-sm text-gray-500 dark:text-gray-400">
+                              {fullPlayerData.primaryPosition.abbreviation}
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => handleUnfollowPlayer(player.id)}
+                          className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                        >
+                          Unfollow
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
               {/* Save Button */}
               <button
                 onClick={handleSave}
-                disabled={isSaving || !selection.team || !selection.player}
-                className={`
-                  w-full inline-flex items-center justify-center px-6 py-3 border border-transparent 
-                  rounded-md shadow-sm text-base font-medium text-white
-                  transition-colors duration-200
-                  ${
-                    isSaving || !selection.team || !selection.player
-                      ? 'bg-gray-400 dark:bg-gray-600 cursor-not-allowed'
-                      : 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800'
-                  }
-                `}
+                className="w-full inline-flex items-center justify-center px-6 py-3 border border-transparent 
+                  rounded-md shadow-sm text-base font-medium text-white bg-blue-600 hover:bg-blue-700 
+                  dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors duration-200
+                  focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 
+                  dark:focus:ring-offset-gray-800"
               >
                 {isSaving ? (
                   <>
@@ -115,10 +180,10 @@ function Preferences() {
                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                       />
                     </svg>
-                    <span className="text-white dark:text-gray-100">Saving...</span>
+                    <span>Saving...</span>
                   </>
                 ) : (
-                  'Save Preferences'
+                  'Done'
                 )}
               </button>
             </div>

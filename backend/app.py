@@ -22,18 +22,25 @@ news_ns = api.namespace('news', description='News operations')
 @news_ns.route('/digest')
 class NewsDigest(Resource):
     @news_ns.doc('get_news_digest')
-    @news_ns.param('team', 'Team name')
-    @news_ns.param('player', 'Player name')
+    @news_ns.param('teams[]', 'Team names array')
+    @news_ns.param('players[]', 'Player names array')
     def get(self):
-        """Get news digest for team and player"""
+        """Get news digest for multiple teams and players"""
         try:
-            team = request.args.get('team')
-            player = request.args.get('player')
+            # Get arrays from request args
+            teams = request.args.getlist('teams[]')
+            players = request.args.getlist('players[]')
             
-            if not team or not player:
-                return {'error': 'Team and player parameters are required'}, 400
+            logger.info(f"Received request with teams: {teams}, players: {players}")
+            
+            if not teams and not players:
+                return {'error': 'At least one team or player must be specified'}, 400
+            
+            # Filter out empty strings
+            teams = [t for t in teams if t]
+            players = [p for p in players if p]
                 
-            result = get_news_digest(team, player)
+            result = get_news_digest(teams=teams, players=players)
             
             if result['success']:
                 return jsonify(result)
@@ -116,5 +123,13 @@ def get_highlights():
         logger.error(f"Error fetching highlights: {str(e)}", exc_info=True)
         return {'error': 'Failed to fetch highlights'}, 500
 
+@app.errorhandler(Exception)
+def handle_error(error):
+    message = str(error)
+    status_code = 500
+    if hasattr(error, 'code'):
+        status_code = error.code
+    return jsonify({'success': False, 'error': message}), status_code
+
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0')
+    app.run(host='0.0.0.0', port=5000, debug=True)

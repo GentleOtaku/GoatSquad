@@ -1,53 +1,20 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import NewsDigest from '../components/NewsDigest';
+import { usePreferences } from '../hooks/usePreferences';
 
-function Feed() {
-  const [preferences, setPreferences] = useState(null);
+function News() {
+  const { preferences, isLoading } = usePreferences();
 
   useEffect(() => {
-    // Load initial preferences
-    loadPreferences();
+    console.log('Current preferences:', preferences);
+  }, [preferences]);
 
-    // Add event listener for storage changes
-    window.addEventListener('storage', handleStorageChange);
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
 
-    // Cleanup
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, []);
-
-  const loadPreferences = () => {
-    const savedTeam = JSON.parse(localStorage.getItem('selectedTeam'));
-    const savedPlayer = JSON.parse(localStorage.getItem('selectedPlayer'));
-    
-    if (savedTeam && savedPlayer) {
-      setPreferences({ team: savedTeam, player: savedPlayer });
-    }
-  };
-
-  const handleStorageChange = (e) => {
-    // Reload preferences when localStorage changes
-    if (e.key === 'selectedTeam' || e.key === 'selectedPlayer') {
-      loadPreferences();
-    }
-  };
-
-  // Create a custom event listener for preference updates
-  useEffect(() => {
-    const handlePreferenceUpdate = () => {
-      loadPreferences();
-    };
-
-    window.addEventListener('preferenceUpdate', handlePreferenceUpdate);
-
-    return () => {
-      window.removeEventListener('preferenceUpdate', handlePreferenceUpdate);
-    };
-  }, []);
-
-  if (!preferences) {
+  if (!preferences || (!preferences.teams.length && !preferences.players.length)) {
     return (
       <div className="min-h-[80vh] flex items-center justify-center fade-in">
         <div className="text-center max-w-md mx-auto p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
@@ -83,11 +50,19 @@ function Feed() {
     );
   }
 
+  console.log('Passing to NewsDigest:', {
+    teams: preferences.teams,
+    players: preferences.players
+  });
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 slide-up">
-      <NewsDigest team={preferences.team} player={preferences.player} />
+      <NewsDigest 
+        teams={preferences.teams || []} 
+        players={preferences.players || []} 
+      />
     </div>
   );
 }
 
-export default Feed; 
+export default News; 
