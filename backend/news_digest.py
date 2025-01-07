@@ -1,10 +1,11 @@
 import os
+# pip install -U -q google-genai
+# pip install python-dotenv
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 import logging
 from bs4 import BeautifulSoup
-from datetime import datetime
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -28,12 +29,9 @@ def get_news_digest(team_name, player_name):
         # Configure search tool
         search_tool = {'google_search': {}}
         
-        # Add current timestamp to ensure fresh content
-        current_time = datetime.utcnow().isoformat()
-        
-        # Create the content structure with search-enabled prompt and timestamp
+        # Create the content structure with search-enabled prompt
         prompt = f"""
-        As of {current_time}, generate a concise MLB update focusing on {team_name} and {player_name}. Include:
+        Generate a concise MLB update focusing on {team_name} and {player_name}. Include:
 
         # Team Update
         - Current standings
@@ -51,7 +49,6 @@ def get_news_digest(team_name, player_name):
         - Potential milestones
 
         Format in markdown, use bullet points, and bold (**) key numbers. Remove any introductory phrases and start directly with the content.
-        Use real-time data and ensure information is current.
         """
 
         # Generate content with search enabled
@@ -61,14 +58,10 @@ def get_news_digest(team_name, player_name):
             config=types.GenerateContentConfig(
                 tools=[search_tool],
                 response_modalities=["TEXT"],
-                temperature=0.7,  # Add some variability
-                candidate_count=1,
-                top_k=40,
-                top_p=0.95,
             )
         )
 
-        logger.info(f"Generated news digest at {current_time}")
+        logger.info("Successfully generated news digest")
         
         # Get search metadata
         search_content = None
@@ -97,8 +90,7 @@ def get_news_digest(team_name, player_name):
         return {
             'success': True,
             'digest': content,
-            'sources': search_content or "Generated using Google Gemini AI with web search",
-            'timestamp': current_time
+            'sources': search_content or "Generated using Google Gemini AI with web search"
         }
 
     except Exception as e:
@@ -106,7 +98,7 @@ def get_news_digest(team_name, player_name):
         return {
             'success': False,
             'error': str(e)
-        }
+        } 
 
 def clean_source_links(sources_html):
     """Clean and extract source links from Google's HTML"""

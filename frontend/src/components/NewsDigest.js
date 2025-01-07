@@ -27,11 +27,11 @@ function NewsDigest({ team, player }) {
         if (response.data.highlights && response.data.highlights.length > 0) {
           setHighlights(response.data.highlights);
         } else {
-          // If no player-specific highlights, use default video
+          // If no player-specific highlights, show MLB featured highlight
           setHighlights([{
             title: `Featured MLB Highlight`,
             description: 'Watch the latest MLB action',
-            url: 'https://www.mlb.com/video/embed/featured',
+            url: 'https://mlb-cuts-diamond.mlb.com/FORGE/2024/2024-03/28/b0e6e6d3-0b9b0b9b-0b9b0b9b-csvm-diamondx64-asset_1280x720_59_4000K.mp4',
             date: new Date().toISOString(),
             blurb: 'Featured MLB highlight'
           }]);
@@ -42,7 +42,7 @@ function NewsDigest({ team, player }) {
         setHighlights([{
           title: `Featured MLB Highlight`,
           description: 'Watch the latest MLB action',
-          url: 'https://www.mlb.com/video/embed/featured',
+          url: 'https://mlb-cuts-diamond.mlb.com/FORGE/2024/2024-03/28/b0e6e6d3-0b9b0b9b-0b9b0b9b-csvm-diamondx64-asset_1280x720_59_4000K.mp4',
           date: new Date().toISOString(),
           blurb: 'Featured MLB highlight'
         }]);
@@ -183,11 +183,11 @@ function NewsDigest({ team, player }) {
       </div>
 
       {/* Updated Video Section */}
-      {highlights.length > 0 && (
-        <div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
-          <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
-            Recent Highlights
-          </h2>
+      <div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
+        <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+          {highlights.length > 0 ? 'Recent Highlights' : 'Featured Highlight'}
+        </h2>
+        {highlights.length > 0 ? (
           <div className="space-y-6">
             {highlights.map((highlight, index) => (
               <div key={index} className="space-y-2">
@@ -218,8 +218,41 @@ function NewsDigest({ team, player }) {
               </div>
             ))}
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="text-center py-12">
+            <svg 
+              className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500 mb-4"
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={2} 
+                d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+              />
+            </svg>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+              No Recent Highlights Available
+            </h3>
+            <p className="text-gray-500 dark:text-gray-400 mb-8">
+              No recent highlights found for {player?.fullName}. Here's a featured MLB highlight instead.
+            </p>
+            <div className="aspect-w-16 aspect-h-9 bg-gray-100 dark:bg-gray-900 rounded-lg overflow-hidden">
+              <video
+                className="w-full h-full object-contain"
+                controls
+                playsInline
+                preload="metadata"
+              >
+                <source src="https://mlb-cuts-diamond.mlb.com/FORGE/2024/2024-03/28/b0e6e6d3-0b9b0b9b-0b9b0b9b-csvm-diamondx64-asset_1280x720_59_4000K.mp4" type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

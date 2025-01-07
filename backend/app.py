@@ -4,6 +4,7 @@ from flask_cors import CORS
 from news_digest import get_news_digest
 import logging
 import requests
+from datetime import datetime
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -65,10 +66,10 @@ def get_highlights():
         schedule_response.raise_for_status()
         schedule_data = schedule_response.json()
 
-        highlights = []
+        all_highlights = []
         
         # Process each date's games
-        for date in schedule_data.get('dates', [])[:5]:  # Look at last 5 days
+        for date in schedule_data.get('dates', [])[:10]:  # Look at last 10 days to find more highlights
             for game in date.get('games', []):
                 game_pk = game.get('gamePk')
                 
@@ -89,16 +90,24 @@ def get_highlights():
                         playbacks = highlight.get('playbacks', [])
                         if playbacks:
                             best_playback = max(playbacks, key=lambda x: int(x.get('height', 0) or 0))
-                            highlights.append({
+                            all_highlights.append({
                                 'title': highlight.get('title', ''),
                                 'description': highlight.get('description', ''),
                                 'url': best_playback.get('url'),
                                 'date': date.get('date'),
-                                'blurb': highlight.get('blurb', '')
+                                'blurb': highlight.get('blurb', ''),
+                                'timestamp': highlight.get('date', date.get('date'))  # Use highlight date if available
                             })
 
-        logger.info(f"Found {len(highlights)} highlights")
-        return jsonify({'highlights': highlights})
+        # Sort highlights by date (newest first) and take the 5 most recent
+        sorted_highlights = sorted(
+            all_highlights,
+            key=lambda x: datetime.strptime(x['date'], '%Y-%m-%d') if x['date'] else datetime.min,
+            reverse=True
+        )[:5]
+
+        logger.info(f"Found {len(sorted_highlights)} recent highlights")
+        return jsonify({'highlights': sorted_highlights})
 
     except requests.exceptions.RequestException as e:
         logger.error(f"Error making request to MLB API: {str(e)}")
