@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
 import DOMPurify from 'dompurify';
+import TranslatedText from './TranslatedText';
 
 function NewsDigest({ teams, players }) {
   const [digests, setDigests] = useState([]);
@@ -184,6 +185,38 @@ function NewsDigest({ teams, players }) {
     }
   };
 
+  // Update the helper function to handle non-string content
+  const splitContentIntoSentences = (content) => {
+    if (!content) return [];
+    const textContent = renderContent(content);
+    // Split by periods, exclamation marks, or question marks followed by spaces or newlines
+    // but preserve the punctuation
+    return textContent.match(/[^.!?]+[.!?]+/g) || [textContent];
+  };
+
+  // Update the components to handle non-string content
+  const renderContent = (content) => {
+    if (!content) return '';
+    
+    // If content is an array, join it
+    if (Array.isArray(content)) {
+      return content.map(item => renderContent(item)).join(' ');
+    }
+    
+    // If content is a React element with props.children
+    if (content.props && content.props.children) {
+      return renderContent(content.props.children);
+    }
+    
+    // If content is an object but not a React element
+    if (typeof content === 'object') {
+      return content.toString();
+    }
+    
+    // If content is already a string or number
+    return String(content);
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -207,7 +240,7 @@ function NewsDigest({ teams, players }) {
     return (
       <div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
         <div className="text-red-600 dark:text-red-400">
-          Error: {error}
+          <TranslatedText text={`Error: ${error}`} />
         </div>
       </div>
     );
@@ -219,19 +252,67 @@ function NewsDigest({ teams, players }) {
       {digests.map((digest, index) => (
         <div key={index} className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
           <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
-            {digest.type === 'team' ? 'Team Update' : 'Player Spotlight'}: {digest.subject}
+            <TranslatedText text={`${digest.type === 'team' ? 'Team Update' : 'Player Spotlight'}: ${digest.subject}`} />
           </h2>
           
           <div className="prose dark:prose-invert prose-headings:text-gray-900 dark:prose-headings:text-white prose-p:text-gray-700 dark:prose-p:text-gray-300 prose-strong:text-gray-900 dark:prose-strong:text-white prose-ul:text-gray-700 dark:prose-ul:text-gray-300 prose-li:text-gray-700 dark:prose-li:text-gray-300 max-w-none">
             <ReactMarkdown
               components={{
-                h1: ({node, ...props}) => <h1 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white" {...props} />,
-                h2: ({node, ...props}) => <h2 className="text-xl font-semibold mb-3 text-gray-800 dark:text-gray-100" {...props} />,
-                h3: ({node, ...props}) => <h3 className="text-lg font-medium mb-2 text-gray-800 dark:text-gray-200" {...props} />,
-                p: ({node, ...props}) => <p className="mb-4 text-gray-700 dark:text-gray-300" {...props} />,
-                ul: ({node, ...props}) => <ul className="list-disc pl-6 mb-4 text-gray-700 dark:text-gray-300" {...props} />,
-                li: ({node, ...props}) => <li className="mb-2 text-gray-700 dark:text-gray-300" {...props} />,
-                strong: ({node, ...props}) => <strong className="font-semibold text-gray-900 dark:text-white" {...props} />
+                // Update the paragraph component to handle sentences
+                p: ({node, ...props}) => {
+                  const text = renderContent(props.children);
+                  const sentences = splitContentIntoSentences(text);
+                  return (
+                    <p className="mb-4 text-gray-700 dark:text-gray-300">
+                      {sentences.map((sentence, idx) => (
+                        <React.Fragment key={idx}>
+                          <TranslatedText text={sentence.trim()} />
+                          {idx < sentences.length - 1 ? ' ' : ''}
+                        </React.Fragment>
+                      ))}
+                    </p>
+                  );
+                },
+                // Update other components similarly
+                h1: ({node, ...props}) => (
+                  <h1 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+                    <TranslatedText text={renderContent(props.children)} />
+                  </h1>
+                ),
+                h2: ({node, ...props}) => (
+                  <h2 className="text-xl font-semibold mb-3 text-gray-800 dark:text-gray-100">
+                    <TranslatedText text={renderContent(props.children)} />
+                  </h2>
+                ),
+                h3: ({node, ...props}) => (
+                  <h3 className="text-lg font-medium mb-2 text-gray-800 dark:text-gray-200">
+                    <TranslatedText text={renderContent(props.children)} />
+                  </h3>
+                ),
+                li: ({node, ...props}) => {
+                  const text = renderContent(props.children);
+                  const sentences = splitContentIntoSentences(text);
+                  return (
+                    <li className="mb-2 text-gray-700 dark:text-gray-300">
+                      {sentences.map((sentence, idx) => (
+                        <React.Fragment key={idx}>
+                          <TranslatedText text={sentence.trim()} />
+                          {idx < sentences.length - 1 ? ' ' : ''}
+                        </React.Fragment>
+                      ))}
+                    </li>
+                  );
+                },
+                ul: ({node, ...props}) => (
+                  <ul className="list-disc pl-6 mb-4 text-gray-700 dark:text-gray-300">
+                    {props.children}
+                  </ul>
+                ),
+                strong: ({node, ...props}) => (
+                  <strong className="font-semibold text-gray-900 dark:text-white">
+                    <TranslatedText text={renderContent(props.children)} />
+                  </strong>
+                )
               }}
             >
               {digest.content}
@@ -242,7 +323,7 @@ function NewsDigest({ teams, players }) {
           {digest.sources && (
             <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
               <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">
-                Sources
+                <TranslatedText text="Sources" />
               </h3>
               <div className="flex flex-wrap gap-2">
                 {parseSourceLinks(digest.sources).map((source, index) => (
@@ -257,7 +338,7 @@ function NewsDigest({ teams, players }) {
                       hover:bg-gray-200 dark:hover:bg-gray-600 
                       transition-colors duration-200"
                   >
-                    {source.text}
+                    <TranslatedText text={source.text} />
                   </a>
                 ))}
               </div>
@@ -267,7 +348,7 @@ function NewsDigest({ teams, players }) {
           {/* Timestamp */}
           {digest.timestamp && (
             <div className="mt-4 text-sm text-gray-500 dark:text-gray-400">
-              Generated at: {new Date(digest.timestamp).toLocaleString()}
+              <TranslatedText text={`Generated at: ${new Date(digest.timestamp).toLocaleString()}`} />
             </div>
           )}
         </div>
@@ -277,13 +358,14 @@ function NewsDigest({ teams, players }) {
       {highlights.length > 0 && (
         <div className="space-y-6">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Recent Highlights
+            <TranslatedText text="Recent Highlights" />
           </h2>
           {highlights.map((item, index) => (
             <div key={index} className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
               <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">
-                {item.type === 'team' ? 'Team Highlight: ' : 'Player Highlight: '}
-                {item.subject}
+                <TranslatedText 
+                  text={`${item.type === 'team' ? 'Team Highlight: ' : 'Player Highlight: '} ${item.subject}`}
+                />
               </h3>
               {item.highlight?.url ? (
                 <div className="aspect-w-16 aspect-h-9 bg-gray-100 dark:bg-gray-900 rounded-lg overflow-hidden mb-4">
@@ -294,24 +376,24 @@ function NewsDigest({ teams, players }) {
                     preload="metadata"
                   >
                     <source src={item.highlight.url} type="video/mp4" />
-                    Your browser does not support the video tag.
+                    <TranslatedText text="Your browser does not support the video tag." />
                   </video>
                 </div>
               ) : (
                 <div className="aspect-w-16 aspect-h-9 bg-gray-100 dark:bg-gray-900 rounded-lg flex items-center justify-center mb-4">
                   <p className="text-gray-500 dark:text-gray-400 text-sm">
-                    No highlight available
+                    <TranslatedText text="No highlight available" />
                   </p>
                 </div>
               )}
               {item.highlight?.description && (
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                  {item.highlight.description}
+                  <TranslatedText text={item.highlight.description} />
                 </p>
               )}
               {item.highlight?.date && (
                 <p className="text-xs text-gray-500 dark:text-gray-500">
-                  {new Date(item.highlight.date).toLocaleDateString()}
+                  <TranslatedText text={new Date(item.highlight.date).toLocaleDateString()} />
                 </p>
               )}
             </div>

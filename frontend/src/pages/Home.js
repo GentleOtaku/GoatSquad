@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import TranslatedText from '../components/TranslatedText';
 
 function Home() {
   const features = [
@@ -40,10 +41,10 @@ function Home() {
     <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
       <div className="text-center">
         <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white sm:text-4xl">
-          Welcome to GoatSquad
+          <TranslatedText text="Welcome to GoatSquad" />
         </h2>
         <p className="mt-4 text-xl text-gray-500 dark:text-gray-400">
-          Your personalized MLB experience starts here
+          <TranslatedText text="Your personalized MLB experience starts here" />
         </p>
       </div>
 
@@ -61,14 +62,16 @@ function Home() {
                     {feature.icon}
                   </div>
                   <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">
-                    {feature.name}
+                    <TranslatedText text={feature.name} />
                   </h3>
                   <p className="mt-2 text-base text-gray-500 dark:text-gray-400">
-                    {feature.description}
+                    <TranslatedText text={feature.description} />
                   </p>
                 </div>
                 <div className="mt-4 flex items-center text-blue-600 dark:text-blue-400">
-                  <span className="text-sm font-medium">Learn more</span>
+                  <span className="text-sm font-medium">
+                    <TranslatedText text="Learn more" />
+                  </span>
                   <svg 
                     className="ml-2 w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" 
                     fill="none" 

@@ -5,6 +5,8 @@ from news_digest import get_news_digest
 import logging
 import requests
 from datetime import datetime
+import os
+from google.cloud import translate
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -123,6 +125,63 @@ def get_highlights():
         logger.error(f"Error fetching highlights: {str(e)}", exc_info=True)
         return {'error': 'Failed to fetch highlights'}, 500
 
+# Initialize the Translation client
+translate_client = translate.TranslationServiceClient()
+
+@app.route('/api/translate', methods=['POST'])
+def translate_text():
+    """Translate text to target language using Google Cloud Translation API"""
+    try:
+        logger.info("Received translation request")
+        data = request.get_json()
+        logger.info(f"Request data: {data}")
+        
+        text = data.get('text')
+        target_language = data.get('target_language')
+
+        logger.info(f"Received translation request - Text: {text}, Target Language: {target_language}")
+
+        if not text or not target_language:
+            logger.error("Missing text or target language")
+            return jsonify({'error': 'Missing text or target language'}), 400
+
+        project_id = os.getenv('GOOGLE_CLOUD_PROJECT')
+        logger.info(f"Using project ID: {project_id}")
+        
+        location = "global"
+        parent = f"projects/{project_id}/locations/{location}"
+
+        logger.info(f"Making translation request to Google Cloud - Project ID: {project_id}")
+
+        try:
+            response = translate_client.translate_text(
+                request={
+                    "parent": parent,
+                    "contents": [text],
+                    "mime_type": "text/plain",
+                    "target_language_code": target_language,
+                }
+            )
+            logger.info(f"Raw translation response: {response}")
+
+            translation = response.translations[0]
+            result = {
+                'success': True,
+                'translatedText': translation.translated_text,
+                'detectedSourceLanguage': translation.detected_language_code
+            }
+            
+            logger.info(f"Translation successful - Result: {result}")
+            return jsonify(result)
+
+        except Exception as e:
+            logger.error(f"Google Translation API error: {str(e)}", exc_info=True)
+            return jsonify({'success': False, 'error': f"Translation API error: {str(e)}"}), 500
+
+    except Exception as e:
+        logger.error(f"Translation error: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.errorhandler(Exception)
 def handle_error(error):
     message = str(error)
@@ -132,4 +191,4 @@ def handle_error(error):
     return jsonify({'success': False, 'error': message}), status_code
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=os.getenv('BACKEND_PORT'), debug=True)
