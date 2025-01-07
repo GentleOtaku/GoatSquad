@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import TeamPlayerSelector from '../components/TeamPlayerSelector';
 import { usePreferences } from '../hooks/usePreferences';
+import TranslatedText from '../components/TranslatedText';
 
 function Preferences() {
   const navigate = useNavigate();
@@ -10,15 +11,21 @@ function Preferences() {
   const [isSaving, setIsSaving] = useState(false);
   const [allTeams, setAllTeams] = useState([]);
   const [playerData, setPlayerData] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   // Fetch all teams on mount to ensure we have team data
   useEffect(() => {
     const fetchTeams = async () => {
       try {
+        setLoading(true);
         const response = await axios.get('https://statsapi.mlb.com/api/v1/teams?sportId=1');
         setAllTeams(response.data.teams);
+        setLoading(false);
       } catch (error) {
         console.error('Error fetching teams:', error);
+        setError(error.message);
+        setLoading(false);
       }
     };
 
@@ -76,7 +83,7 @@ function Preferences() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">
-        Follow Teams & Players
+        <TranslatedText text="Follow Teams & Players" />
       </h1>
 
       <div className="flex flex-col lg:flex-row gap-8">
@@ -97,20 +104,22 @@ function Preferences() {
             <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 space-y-6">
               {/* Followed Teams */}
               <div>
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Followed Teams</h3>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                  <TranslatedText text="Followed Teams" />
+                </h3>
                 <div className="space-y-2">
                   {preferences?.teams?.filter(team => team.name).map(team => (
                     <div key={team.id} 
                       className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
                     >
                       <span className="text-gray-900 dark:text-white">
-                        {team.name}
+                        <TranslatedText text={team.name} />
                       </span>
                       <button
                         onClick={() => handleUnfollowTeam(team.id)}
                         className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
                       >
-                        Unfollow
+                        <TranslatedText text="Unfollow" />
                       </button>
                     </div>
                   ))}
@@ -119,7 +128,9 @@ function Preferences() {
 
               {/* Followed Players */}
               <div>
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Followed Players</h3>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                  <TranslatedText text="Followed Players" />
+                </h3>
                 <div className="space-y-2">
                   {preferences?.players?.filter(player => player.fullName).map(player => {
                     const fullPlayerData = playerData[player.id] || player;
@@ -129,11 +140,11 @@ function Preferences() {
                       >
                         <div className="flex flex-col">
                           <span className="text-gray-900 dark:text-white">
-                            {fullPlayerData.fullName}
+                            <TranslatedText text={fullPlayerData.fullName} />
                           </span>
                           {fullPlayerData.primaryPosition && (
                             <span className="text-sm text-gray-500 dark:text-gray-400">
-                              {fullPlayerData.primaryPosition.abbreviation}
+                              <TranslatedText text={fullPlayerData.primaryPosition.abbreviation} />
                             </span>
                           )}
                         </div>
@@ -141,7 +152,7 @@ function Preferences() {
                           onClick={() => handleUnfollowPlayer(player.id)}
                           className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
                         >
-                          Unfollow
+                          <TranslatedText text="Unfollow" />
                         </button>
                       </div>
                     );
@@ -180,16 +191,37 @@ function Preferences() {
                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                       />
                     </svg>
-                    <span>Saving...</span>
+                    <TranslatedText text="Saving..." />
                   </>
                 ) : (
-                  'Done'
+                  <TranslatedText text="Done" />
                 )}
               </button>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Loading state */}
+      {loading && (
+        <div className="text-center py-4">
+          <TranslatedText text="Loading..." />
+        </div>
+      )}
+
+      {/* Error state */}
+      {error && (
+        <div className="text-center text-red-600 py-4">
+          <TranslatedText text={error} />
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!preferences?.teams?.length && !preferences?.players?.length && (
+        <div className="text-center py-4 text-gray-500">
+          <TranslatedText text="No teams or players selected yet" />
+        </div>
+      )}
     </div>
   );
 }

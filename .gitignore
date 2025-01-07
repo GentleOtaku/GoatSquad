@@ -260,3 +260,4 @@ output/
 .env.*.local
 backend/.env
 frontend/.env
+*.json

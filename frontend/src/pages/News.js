@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import NewsDigest from '../components/NewsDigest';
 import { usePreferences } from '../hooks/usePreferences';
+import TranslatedText from '../components/TranslatedText';
 
 function News() {
   const { preferences, isLoading } = usePreferences();
