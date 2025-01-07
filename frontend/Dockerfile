@@ -1,25 +1,33 @@
-FROM node:16-alpine
+# Build stage
+FROM node:18-alpine as build
 
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies including dev dependencies
-RUN npm install
-RUN npm install -D @tailwindcss/aspect-ratio
+# Install dependencies
+RUN npm ci
 
-# Copy all source files
+# Copy source code
 COPY . .
 
-# Build for production
+# Set environment variables during build
+ARG REACT_APP_BACKEND_URL
+ENV REACT_APP_BACKEND_URL=${REACT_APP_BACKEND_URL}
+
+# Build the app
 RUN npm run build
 
-# Use nginx to serve the built files
+# Production stage
 FROM nginx:alpine
-COPY --from=0 /app/build /usr/share/nginx/html
+
+# Copy built assets from build stage
+COPY --from=build /app/build /usr/share/nginx/html
+
+# Copy nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["nginx", "-g", "daemon off;"] 
