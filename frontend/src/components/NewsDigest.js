@@ -74,38 +74,91 @@ function NewsDigest({ teams, players }) {
   // Updated highlights fetch
   useEffect(() => {
     const fetchHighlights = async () => {
-      if (!teams.length && !players.length) return;
+      if (!teams?.length && !players?.length) return;
       
       try {
-        const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/mlb/highlights`, {
-          params: {
-            teams: teams.map(team => team.id),
-            players: players.map(player => player.id)
-          }
-        });
+        // Fetch highlights for teams
+        const teamHighlights = await Promise.all(
+          teams.slice(0, 3).map(async team => {
+            try {
+              const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/mlb/highlights`, {
+                params: { team_id: team.id }
+              });
+              return {
+                type: 'team',
+                subject: team.name,
+                highlight: response.data.highlights?.[0] || {
+                  title: `Featured ${team.name} Highlight`,
+                  description: `Watch the latest ${team.name} action`,
+                  url: 'https://mlb-cuts-diamond.mlb.com/FORGE/2024/2024-03/28/b0e6e6d3-0b9b0b9b-0b9b0b9b-csvm-diamondx64-asset_1280x720_59_4000K.mp4',
+                  date: new Date().toISOString(),
+                  blurb: `Featured ${team.name} highlight`
+                }
+              };
+            } catch (error) {
+              console.error(`Error fetching highlights for team ${team.name}:`, error);
+              return null;
+            }
+          })
+        );
 
-        if (response.data.highlights && response.data.highlights.length > 0) {
-          setHighlights(response.data.highlights);
-        } else {
-          // If no player-specific highlights, show MLB featured highlight
-          setHighlights([{
-            title: `Featured MLB Highlight`,
-            description: 'Watch the latest MLB action',
-            url: 'https://mlb-cuts-diamond.mlb.com/FORGE/2024/2024-03/28/b0e6e6d3-0b9b0b9b-0b9b0b9b-csvm-diamondx64-asset_1280x720_59_4000K.mp4',
-            date: new Date().toISOString(),
-            blurb: 'Featured MLB highlight'
-          }]);
-        }
+        // Fetch highlights for players
+        const playerHighlights = await Promise.all(
+          players.slice(0, 3).map(async player => {
+            try {
+              const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/mlb/highlights`, {
+                params: { player_id: player.id }
+              });
+              return {
+                type: 'player',
+                subject: player.fullName,
+                highlight: response.data.highlights?.[0] || {
+                  title: `Featured ${player.fullName} Highlight`,
+                  description: `Watch the latest ${player.fullName} action`,
+                  url: 'https://mlb-cuts-diamond.mlb.com/FORGE/2024/2024-03/28/b0e6e6d3-0b9b0b9b-0b9b0b9b-csvm-diamondx64-asset_1280x720_59_4000K.mp4',
+                  date: new Date().toISOString(),
+                  blurb: `Featured ${player.fullName} highlight`
+                }
+              };
+            } catch (error) {
+              console.error(`Error fetching highlights for player ${player.fullName}:`, error);
+              return null;
+            }
+          })
+        );
+
+        // Filter out null values and combine highlights
+        const validHighlights = [...teamHighlights, ...playerHighlights].filter(Boolean);
+        setHighlights(validHighlights);
+
       } catch (err) {
         console.error('Error fetching highlights:', err);
-        // Set default video on error
-        setHighlights([{
-          title: `Featured MLB Highlight`,
-          description: 'Watch the latest MLB action',
-          url: 'https://mlb-cuts-diamond.mlb.com/FORGE/2024/2024-03/28/b0e6e6d3-0b9b0b9b-0b9b0b9b-csvm-diamondx64-asset_1280x720_59_4000K.mp4',
-          date: new Date().toISOString(),
-          blurb: 'Featured MLB highlight'
-        }]);
+        // Set default highlights
+        const defaultHighlights = [
+          ...teams.slice(0, 3).map(team => ({
+            type: 'team',
+            subject: team.name,
+            highlight: {
+              title: `Featured ${team.name} Highlight`,
+              description: `Watch the latest ${team.name} action`,
+              url: 'https://mlb-cuts-diamond.mlb.com/FORGE/2024/2024-03/28/b0e6e6d3-0b9b0b9b-0b9b0b9b-csvm-diamondx64-asset_1280x720_59_4000K.mp4',
+              date: new Date().toISOString(),
+              blurb: `Featured ${team.name} highlight`
+            }
+          })),
+          ...players.slice(0, 3).map(player => ({
+            type: 'player',
+            subject: player.fullName,
+            highlight: {
+              title: `Featured ${player.fullName} Highlight`,
+              description: `Watch the latest ${player.fullName} action`,
+              url: 'https://mlb-cuts-diamond.mlb.com/FORGE/2024/2024-03/28/b0e6e6d3-0b9b0b9b-0b9b0b9b-csvm-diamondx64-asset_1280x720_59_4000K.mp4',
+              date: new Date().toISOString(),
+              blurb: `Featured ${player.fullName} highlight`
+            }
+          }))
+        ];
+        setHighlights(defaultHighlights);
       }
     };
 
@@ -221,76 +274,50 @@ function NewsDigest({ teams, players }) {
       ))}
 
       {/* Highlights Section */}
-      <div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
-        <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
-          {highlights.length > 0 ? 'Recent Highlights' : 'Featured Highlight'}
-        </h2>
-        {highlights.length > 0 ? (
-          <div className="space-y-6">
-            {highlights.map((highlight, index) => (
-              <div key={index} className="space-y-2">
-                <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
-                  {highlight.title}
-                </h3>
-                <div className="aspect-w-16 aspect-h-9 bg-gray-100 dark:bg-gray-900 rounded-lg overflow-hidden">
+      {highlights.length > 0 && (
+        <div className="space-y-6">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Recent Highlights
+          </h2>
+          {highlights.map((item, index) => (
+            <div key={index} className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">
+                {item.type === 'team' ? 'Team Highlight: ' : 'Player Highlight: '}
+                {item.subject}
+              </h3>
+              {item.highlight?.url ? (
+                <div className="aspect-w-16 aspect-h-9 bg-gray-100 dark:bg-gray-900 rounded-lg overflow-hidden mb-4">
                   <video
                     className="w-full h-full object-contain"
                     controls
                     playsInline
                     preload="metadata"
                   >
-                    <source src={highlight.url} type="video/mp4" />
+                    <source src={item.highlight.url} type="video/mp4" />
                     Your browser does not support the video tag.
                   </video>
                 </div>
-                {highlight.description && (
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {highlight.description}
+              ) : (
+                <div className="aspect-w-16 aspect-h-9 bg-gray-100 dark:bg-gray-900 rounded-lg flex items-center justify-center mb-4">
+                  <p className="text-gray-500 dark:text-gray-400 text-sm">
+                    No highlight available
                   </p>
-                )}
-                {highlight.date && (
-                  <p className="text-xs text-gray-500 dark:text-gray-500">
-                    {new Date(highlight.date).toLocaleDateString()}
-                  </p>
-                )}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <svg 
-              className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500 mb-4"
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-            >
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-              />
-            </svg>
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-              No Recent Highlights Available
-            </h3>
-            <p className="text-gray-500 dark:text-gray-400 mb-8">
-              No recent highlights found for {players.map(player => player.fullName).join(', ')}. Here's a featured MLB highlight instead.
-            </p>
-            <div className="aspect-w-16 aspect-h-9 bg-gray-100 dark:bg-gray-900 rounded-lg overflow-hidden">
-              <video
-                className="w-full h-full object-contain"
-                controls
-                playsInline
-                preload="metadata"
-              >
-                <source src="https://mlb-cuts-diamond.mlb.com/FORGE/2024/2024-03/28/b0e6e6d3-0b9b0b9b-0b9b0b9b-csvm-diamondx64-asset_1280x720_59_4000K.mp4" type="video/mp4" />
-                Your browser does not support the video tag.
-              </video>
+                </div>
+              )}
+              {item.highlight?.description && (
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                  {item.highlight.description}
+                </p>
+              )}
+              {item.highlight?.date && (
+                <p className="text-xs text-gray-500 dark:text-gray-500">
+                  {new Date(item.highlight.date).toLocaleDateString()}
+                </p>
+              )}
             </div>
-          </div>
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
