@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import TranslatedText from '../components/TranslatedText';
+import PageTransition from '../components/PageTransition';
 
 function Home() {
   const features = [
@@ -38,55 +39,57 @@ function Home() {
   ];
 
   return (
-    <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-      <div className="text-center">
-        <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white sm:text-4xl">
-          <TranslatedText text="Welcome to GoatSquad" />
-        </h2>
-        <p className="mt-4 text-xl text-gray-500 dark:text-gray-400">
-          <TranslatedText text="Your personalized MLB experience starts here" />
-        </p>
-      </div>
+    <PageTransition>
+      <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+        <div className="text-center">
+          <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white sm:text-4xl">
+            <TranslatedText text="Welcome to GoatSquad" />
+          </h2>
+          <p className="mt-4 text-xl text-gray-500 dark:text-gray-400">
+            <TranslatedText text="Your personalized MLB experience starts here" />
+          </p>
+        </div>
 
-      <div className="mt-12">
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map((feature) => (
-            <Link
-              key={feature.name}
-              to={feature.href}
-              className="relative group"
-            >
-              <div className="h-full flex flex-col justify-between rounded-lg border border-gray-200 dark:border-gray-700 p-6 bg-white dark:bg-gray-800 shadow-sm transition-all duration-200 hover:shadow-lg">
-                <div>
-                  <div className="flex items-center justify-center h-12 w-12 rounded-md bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300">
-                    {feature.icon}
+        <div className="mt-12">
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+            {features.map((feature) => (
+              <Link
+                key={feature.name}
+                to={feature.href}
+                className="relative group"
+              >
+                <div className="h-full flex flex-col justify-between rounded-lg border border-gray-200 dark:border-gray-700 p-6 bg-white dark:bg-gray-800 shadow-sm transition-all duration-200 hover:shadow-lg">
+                  <div>
+                    <div className="flex items-center justify-center h-12 w-12 rounded-md bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300">
+                      {feature.icon}
+                    </div>
+                    <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">
+                      <TranslatedText text={feature.name} />
+                    </h3>
+                    <p className="mt-2 text-base text-gray-500 dark:text-gray-400">
+                      <TranslatedText text={feature.description} />
+                    </p>
                   </div>
-                  <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">
-                    <TranslatedText text={feature.name} />
-                  </h3>
-                  <p className="mt-2 text-base text-gray-500 dark:text-gray-400">
-                    <TranslatedText text={feature.description} />
-                  </p>
+                  <div className="mt-4 flex items-center text-blue-600 dark:text-blue-400">
+                    <span className="text-sm font-medium">
+                      <TranslatedText text="Learn more" />
+                    </span>
+                    <svg 
+                      className="ml-2 w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
                 </div>
-                <div className="mt-4 flex items-center text-blue-600 dark:text-blue-400">
-                  <span className="text-sm font-medium">
-                    <TranslatedText text="Learn more" />
-                  </span>
-                  <svg 
-                    className="ml-2 w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-              </div>
-            </Link>
-          ))}
+              </Link>
+            ))}
+          </div>
         </div>
       </div>
-    </div>
+    </PageTransition>
   );
 }
 

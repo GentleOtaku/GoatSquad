@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { userService } from '../services/userService';
+import PageTransition from '../components/PageTransition';
 
 function Profile() {
   const { user, logout } = useAuth();
@@ -83,131 +84,133 @@ function Profile() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 py-10">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-          Personal Information
-        </h2>
-        <p className="text-gray-500 dark:text-gray-400 mb-8">
-          Use a permanent address where you can receive mail.
-        </p>
+    <PageTransition>
+      <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
+        {/* Main Content */}
+        <div className="max-w-7xl mx-auto px-4 py-10">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+            Personal Information
+          </h2>
+          <p className="text-gray-500 dark:text-gray-400 mb-8">
+            Use a permanent address where you can receive mail.
+          </p>
 
-        <div className="space-y-6">
-          {/* Avatar Section */}
-          <div className="flex items-center space-x-4">
-            <img
-              src={formData.avatarUrl}
-              alt="Profile"
-              className="h-16 w-16 rounded-full object-cover"
-            />
-            <button
-              type="button"
-              onClick={() => document.getElementById('avatar-input').click()}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white dark:bg-gray-700 dark:text-gray-200 rounded-md border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
-            >
-              Change avatar
-            </button>
-            <input
-              id="avatar-input"
-              type="file"
-              accept="image/*"
-              onChange={handleAvatarChange}
-              className="hidden"
-            />
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              JPG, GIF or PNG. 1MB max.
-            </p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Name Fields */}
-            <div className="grid grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  First name
-                </label>
-                <input
-                  type="text"
-                  name="firstName"
-                  value={formData.firstName}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Last name
-                </label>
-                <input
-                  type="text"
-                  name="lastName"
-                  value={formData.lastName}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500"
-                />
-              </div>
-            </div>
-
-            {/* Email Field */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Email address
-              </label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500"
+          <div className="space-y-6">
+            {/* Avatar Section */}
+            <div className="flex items-center space-x-4">
+              <img
+                src={formData.avatarUrl}
+                alt="Profile"
+                className="h-16 w-16 rounded-full object-cover"
               />
-            </div>
-
-            {/* Username Field */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Username
-              </label>
-              <input
-                type="text"
-                name="username"
-                value={formData.username}
-                onChange={handleChange}
-                className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500"
-              />
-            </div>
-
-            {/* Timezone Field */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Timezone
-              </label>
-              <select
-                name="timezone"
-                value={formData.timezone}
-                onChange={handleChange}
-                className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500"
-              >
-                <option value="Pacific Standard Time">Pacific Standard Time</option>
-                <option value="Mountain Standard Time">Mountain Time</option>
-                <option value="Central Standard Time">Central Time</option>
-                <option value="Eastern Standard Time">Eastern Time</option>
-              </select>
-            </div>
-
-            {/* Save Button */}
-            <div>
               <button
-                type="submit"
-                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                type="button"
+                onClick={() => document.getElementById('avatar-input').click()}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white dark:bg-gray-700 dark:text-gray-200 rounded-md border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
               >
-                Save
+                Change avatar
               </button>
+              <input
+                id="avatar-input"
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarChange}
+                className="hidden"
+              />
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                JPG, GIF or PNG. 1MB max.
+              </p>
             </div>
-          </form>
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Name Fields */}
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    First name
+                  </label>
+                  <input
+                    type="text"
+                    name="firstName"
+                    value={formData.firstName}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Last name
+                  </label>
+                  <input
+                    type="text"
+                    name="lastName"
+                    value={formData.lastName}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              {/* Email Field */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Email address
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+
+              {/* Username Field */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Username
+                </label>
+                <input
+                  type="text"
+                  name="username"
+                  value={formData.username}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+
+              {/* Timezone Field */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Timezone
+                </label>
+                <select
+                  name="timezone"
+                  value={formData.timezone}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                  <option value="Pacific Standard Time">Pacific Standard Time</option>
+                  <option value="Mountain Standard Time">Mountain Time</option>
+                  <option value="Central Standard Time">Central Time</option>
+                  <option value="Eastern Standard Time">Eastern Time</option>
+                </select>
+              </div>
+
+              {/* Save Button */}
+              <div>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  Save
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
-    </div>
+    </PageTransition>
   );
 }
 

@@ -299,5 +299,26 @@ def test():
 # Register blueprints
 app.register_blueprint(mlb)
 
+@app.route('/api/mlb/schedule', methods=['GET'])
+def get_mlb_schedule():
+    team_id = request.args.get('teamId')
+    start_date = request.args.get('startDate')
+    end_date = request.args.get('endDate')
+    
+    try:
+        response = requests.get(
+            'https://statsapi.mlb.com/api/v1/schedule',
+            params={
+                'teamId': team_id,
+                'startDate': start_date,
+                'endDate': end_date,
+                'sportId': 1,
+                'hydrate': 'team,venue'
+            }
+        )
+        return jsonify(response.json())
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.getenv('BACKEND_PORT', 5000)), debug=True)

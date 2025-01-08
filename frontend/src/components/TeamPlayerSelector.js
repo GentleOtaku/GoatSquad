@@ -10,6 +10,7 @@ function TeamPlayerSelector({ onSelect, followedTeams = [], followedPlayers = []
   const [searchQuery, setSearchQuery] = useState('');
   const [searchType, setSearchType] = useState('teams');
   const [error, setError] = useState(null);
+  const [rosterLoading, setRosterLoading] = useState(false);
 
   // Fetch teams on mount
   useEffect(() => {
@@ -43,7 +44,7 @@ function TeamPlayerSelector({ onSelect, followedTeams = [], followedPlayers = []
   const fetchRoster = async (teamId) => {
     if (!teamId || rostersByTeam[teamId]) return;
     
-    setLoading(true);
+    setRosterLoading(true);
     try {
       console.log('Fetching roster from:', `${process.env.REACT_APP_BACKEND_URL}/api/mlb/roster/${teamId}`);
       const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/mlb/roster/${teamId}`);
@@ -64,7 +65,7 @@ function TeamPlayerSelector({ onSelect, followedTeams = [], followedPlayers = []
         [teamId]: []
       }));
     } finally {
-      setLoading(false);
+      setRosterLoading(false);
     }
   };
 
@@ -114,7 +115,7 @@ function TeamPlayerSelector({ onSelect, followedTeams = [], followedPlayers = []
     onSelect({ team, player });
   };
 
-  if (loading) {
+  if (loading && !teams.length) {
     return (
       <div className="flex justify-center items-center py-20">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
@@ -138,17 +139,20 @@ function TeamPlayerSelector({ onSelect, followedTeams = [], followedPlayers = []
 
   return (
     <div className="space-y-6">
-      {/* Search input */}
-      <div>
-        <label htmlFor="search" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+      {/* Search input - Updated styling */}
+      <div className="w-full">
+        <label htmlFor="search" className="block text-lg font-medium text-gray-200 mb-2">
           <TranslatedText text="Search teams or players" />
         </label>
-        <div className="mt-1 relative rounded-md shadow-sm">
+        <div className="relative">
           <input
             type="text"
             name="search"
             id="search"
-            className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-4 pr-10 sm:text-sm border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg
+              text-gray-200 placeholder-gray-400
+              focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+              transition-colors duration-200"
             placeholder={searchType === 'teams' ? 'Search teams...' : 'Search players...'}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -156,24 +160,24 @@ function TeamPlayerSelector({ onSelect, followedTeams = [], followedPlayers = []
         </div>
       </div>
 
-      {/* Toggle buttons */}
-      <div className="flex space-x-4">
+      {/* Toggle buttons - Updated styling to match */}
+      <div className="flex space-x-4 mt-4">
         <button
           onClick={() => setSearchType('teams')}
-          className={`px-4 py-2 rounded-md ${
+          className={`px-6 py-3 rounded-lg transition-colors duration-200 ${
             searchType === 'teams'
               ? 'bg-blue-600 text-white'
-              : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+              : 'bg-gray-700 text-gray-200 hover:bg-gray-600'
           }`}
         >
           <TranslatedText text="Teams" />
         </button>
         <button
           onClick={() => setSearchType('players')}
-          className={`px-4 py-2 rounded-md ${
+          className={`px-6 py-3 rounded-lg transition-colors duration-200 ${
             searchType === 'players'
               ? 'bg-blue-600 text-white'
-              : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+              : 'bg-gray-700 text-gray-200 hover:bg-gray-600'
           }`}
         >
           <TranslatedText text="Players" />
@@ -182,19 +186,15 @@ function TeamPlayerSelector({ onSelect, followedTeams = [], followedPlayers = []
 
       {/* Results list */}
       <div className="mt-4">
-        {loading ? (
-          <div className="flex justify-center items-center py-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-          </div>
-        ) : searchType === 'teams' ? (
+        {searchType === 'teams' ? (
           <div className="space-y-8">
             {/* Teams Section */}
             <section>
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                <h2 className="text-xl font-semibold text-gray-200">
                   <TranslatedText text="Teams" />
                 </h2>
-                <span className="text-sm text-gray-500 dark:text-gray-400">
+                <span className="text-gray-400">
                   {followedTeams.length} followed
                 </span>
               </div>
@@ -225,7 +225,7 @@ function TeamPlayerSelector({ onSelect, followedTeams = [], followedPlayers = []
                               e.target.src = '/images/default-team-logo.png';
                             }}
                           />
-                          <p className="text-sm font-medium text-center text-gray-900 dark:text-white">
+                          <p className="text-sm font-medium text-center text-gray-200">
                             {team.name}
                           </p>
                         </div>
@@ -233,15 +233,15 @@ function TeamPlayerSelector({ onSelect, followedTeams = [], followedPlayers = []
                     ))}
                 </div>
               ) : (
-                <div className="text-center py-12 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                  <p className="text-gray-600 dark:text-gray-400">
+                <div className="text-center py-12 bg-gray-800/50 rounded-lg">
+                  <p className="text-gray-400">
                     <TranslatedText text="No teams found" />
                   </p>
                 </div>
               )}
             </section>
           </div>
-        ) : searchType === 'players' ? (
+        ) : (
           <div className="space-y-8">
             {/* Players Section */}
             <section>
@@ -274,10 +274,9 @@ function TeamPlayerSelector({ onSelect, followedTeams = [], followedPlayers = []
               </div>
 
               {/* Players Grid */}
-              {loading ? (
-                <div className="text-center p-8">
-                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-                  <p className="mt-2 text-gray-600 dark:text-gray-400">Loading players...</p>
+              {rosterLoading ? (
+                <div className="flex justify-center items-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
                 </div>
               ) : selectedTeamFilter && getCurrentPlayers().length > 0 ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -322,7 +321,7 @@ function TeamPlayerSelector({ onSelect, followedTeams = [], followedPlayers = []
               )}
             </section>
           </div>
-        ) : null}
+        )}
       </div>
     </div>
   );

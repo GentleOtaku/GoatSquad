@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useDarkMode } from '../hooks/useDarkMode';
 import { userService } from '../services/userService';
+import PageTransition from '../components/PageTransition';
 
 function Register() {
   const [formData, setFormData] = useState({
@@ -85,152 +86,154 @@ function Register() {
   };
 
   return (
-    <div className={`min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className={`text-center text-3xl font-bold tracking-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-          Create your account
-        </h2>
-      </div>
+    <PageTransition>
+      <div className={`min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
+        <div className="sm:mx-auto sm:w-full sm:max-w-md">
+          <h2 className={`text-center text-3xl font-bold tracking-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+            Create your account
+          </h2>
+        </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className={`py-8 px-4 shadow sm:rounded-lg sm:px-10 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            {/* First Name & Last Name */}
-            <div className="grid grid-cols-2 gap-4">
+        <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+          <div className={`py-8 px-4 shadow sm:rounded-lg sm:px-10 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+            <form className="space-y-6" onSubmit={handleSubmit}>
+              {/* First Name & Last Name */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="firstName" className={`block text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                    First name
+                  </label>
+                  <input
+                    type="text"
+                    name="firstName"
+                    id="firstName"
+                    required
+                    className={`mt-1 block w-full rounded-md px-3 py-2 ${
+                      isDarkMode 
+                        ? 'bg-gray-700 border-gray-600 text-white' 
+                        : 'border-gray-300 text-gray-900'
+                    }`}
+                    value={formData.firstName}
+                    onChange={handleChange}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="lastName" className={`block text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                    Last name
+                  </label>
+                  <input
+                    type="text"
+                    name="lastName"
+                    id="lastName"
+                    required
+                    className={`mt-1 block w-full rounded-md px-3 py-2 ${
+                      isDarkMode 
+                        ? 'bg-gray-700 border-gray-600 text-white' 
+                        : 'border-gray-300 text-gray-900'
+                    }`}
+                    value={formData.lastName}
+                    onChange={handleChange}
+                  />
+                </div>
+              </div>
+
+              {/* Username */}
               <div>
-                <label htmlFor="firstName" className={`block text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                  First name
+                <label htmlFor="username" className={`block text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                  Username
                 </label>
                 <input
                   type="text"
-                  name="firstName"
-                  id="firstName"
+                  name="username"
+                  id="username"
                   required
                   className={`mt-1 block w-full rounded-md px-3 py-2 ${
                     isDarkMode 
                       ? 'bg-gray-700 border-gray-600 text-white' 
                       : 'border-gray-300 text-gray-900'
                   }`}
-                  value={formData.firstName}
+                  value={formData.username}
                   onChange={handleChange}
                 />
               </div>
+
+              {/* Email */}
               <div>
-                <label htmlFor="lastName" className={`block text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                  Last name
+                <label htmlFor="email" className={`block text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                  Email address
                 </label>
                 <input
-                  type="text"
-                  name="lastName"
-                  id="lastName"
+                  type="email"
+                  name="email"
+                  id="email"
                   required
                   className={`mt-1 block w-full rounded-md px-3 py-2 ${
                     isDarkMode 
                       ? 'bg-gray-700 border-gray-600 text-white' 
                       : 'border-gray-300 text-gray-900'
                   }`}
-                  value={formData.lastName}
+                  value={formData.email}
                   onChange={handleChange}
                 />
               </div>
-            </div>
 
-            {/* Username */}
-            <div>
-              <label htmlFor="username" className={`block text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                Username
-              </label>
-              <input
-                type="text"
-                name="username"
-                id="username"
-                required
-                className={`mt-1 block w-full rounded-md px-3 py-2 ${
-                  isDarkMode 
-                    ? 'bg-gray-700 border-gray-600 text-white' 
-                    : 'border-gray-300 text-gray-900'
-                }`}
-                value={formData.username}
-                onChange={handleChange}
-              />
-            </div>
-
-            {/* Email */}
-            <div>
-              <label htmlFor="email" className={`block text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                Email address
-              </label>
-              <input
-                type="email"
-                name="email"
-                id="email"
-                required
-                className={`mt-1 block w-full rounded-md px-3 py-2 ${
-                  isDarkMode 
-                    ? 'bg-gray-700 border-gray-600 text-white' 
-                    : 'border-gray-300 text-gray-900'
-                }`}
-                value={formData.email}
-                onChange={handleChange}
-              />
-            </div>
-
-            {/* Password */}
-            <div>
-              <label htmlFor="password" className={`block text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                Password
-              </label>
-              <input
-                type="password"
-                name="password"
-                id="password"
-                required
-                className={`mt-1 block w-full rounded-md px-3 py-2 ${
-                  isDarkMode 
-                    ? 'bg-gray-700 border-gray-600 text-white' 
-                    : 'border-gray-300 text-gray-900'
-                }`}
-                value={formData.password}
-                onChange={handleChange}
-              />
-            </div>
-
-            {/* Confirm Password */}
-            <div>
-              <label htmlFor="confirmPassword" className={`block text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                Confirm password
-              </label>
-              <input
-                type="password"
-                name="confirmPassword"
-                id="confirmPassword"
-                required
-                className={`mt-1 block w-full rounded-md px-3 py-2 ${
-                  isDarkMode 
-                    ? 'bg-gray-700 border-gray-600 text-white' 
-                    : 'border-gray-300 text-gray-900'
-                }`}
-                value={formData.confirmPassword}
-                onChange={handleChange}
-              />
-            </div>
-
-            {error && (
-              <div className={`rounded-md p-4 ${isDarkMode ? 'bg-red-900' : 'bg-red-50'}`}>
-                <div className={`text-sm ${isDarkMode ? 'text-red-200' : 'text-red-700'}`}>{error}</div>
+              {/* Password */}
+              <div>
+                <label htmlFor="password" className={`block text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                  Password
+                </label>
+                <input
+                  type="password"
+                  name="password"
+                  id="password"
+                  required
+                  className={`mt-1 block w-full rounded-md px-3 py-2 ${
+                    isDarkMode 
+                      ? 'bg-gray-700 border-gray-600 text-white' 
+                      : 'border-gray-300 text-gray-900'
+                  }`}
+                  value={formData.password}
+                  onChange={handleChange}
+                />
               </div>
-            )}
 
-            <button
-              type="submit"
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              Create account
-            </button>
-          </form>
+              {/* Confirm Password */}
+              <div>
+                <label htmlFor="confirmPassword" className={`block text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                  Confirm password
+                </label>
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  id="confirmPassword"
+                  required
+                  className={`mt-1 block w-full rounded-md px-3 py-2 ${
+                    isDarkMode 
+                      ? 'bg-gray-700 border-gray-600 text-white' 
+                      : 'border-gray-300 text-gray-900'
+                  }`}
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                />
+              </div>
+
+              {error && (
+                <div className={`rounded-md p-4 ${isDarkMode ? 'bg-red-900' : 'bg-red-50'}`}>
+                  <div className={`text-sm ${isDarkMode ? 'text-red-200' : 'text-red-700'}`}>{error}</div>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                Create account
+              </button>
+            </form>
+          </div>
         </div>
       </div>
-    </div>
+    </PageTransition>
   );
 }
 
