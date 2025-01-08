@@ -112,7 +112,20 @@ function TeamPlayerSelector({ onSelect, followedTeams = [], followedPlayers = []
   const handleSelection = ({ team, player }) => {
     console.log('Selected team:', team);  // Debug log
     console.log('Selected player:', player);  // Debug log
-    onSelect({ team, player });
+    
+    if (team) {
+      // Check if team is already followed
+      const isAlreadyFollowed = followedTeams.some(t => t.id === team.id);
+      if (!isAlreadyFollowed) {
+        onSelect({ team });
+      }
+    } else if (player) {
+      // Check if player is already followed
+      const isAlreadyFollowed = followedPlayers.some(p => p.id === player.id);
+      if (!isAlreadyFollowed) {
+        onSelect({ player });
+      }
+    }
   };
 
   if (loading && !teams.length) {
@@ -205,32 +218,36 @@ function TeamPlayerSelector({ onSelect, followedTeams = [], followedPlayers = []
                     .filter(team => 
                       team.name.toLowerCase().includes(searchQuery.toLowerCase())
                     )
-                    .map((team) => (
-                      <button
-                        key={team.id}
-                        onClick={() => handleSelection({ team })}
-                        className={`p-4 rounded-lg border transition-all duration-200 ${
-                          followedTeams.some(t => t.id === team.id)
-                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                            : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-500 bg-white dark:bg-gray-800'
-                        }`}
-                      >
-                        <div className="flex flex-col items-center">
-                          <img
-                            src={`https://www.mlbstatic.com/team-logos/${team.id}.svg`}
-                            alt={team.name}
-                            className="w-16 h-16 object-contain mb-2"
-                            onError={(e) => {
-                              e.target.onerror = null;
-                              e.target.src = '/images/default-team-logo.png';
-                            }}
-                          />
-                          <p className="text-sm font-medium text-center text-gray-200">
-                            {team.name}
-                          </p>
-                        </div>
-                      </button>
-                    ))}
+                    .map((team) => {
+                      const isFollowed = followedTeams.some(t => t.id === team.id);
+                      return (
+                        <button
+                          key={team.id}
+                          onClick={() => handleSelection({ team })}
+                          disabled={isFollowed}
+                          className={`p-4 rounded-lg border transition-all duration-200 ${
+                            isFollowed
+                              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 cursor-not-allowed opacity-70'
+                              : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-500 bg-white dark:bg-gray-800'
+                          }`}
+                        >
+                          <div className="flex flex-col items-center">
+                            <img
+                              src={`https://www.mlbstatic.com/team-logos/${team.id}.svg`}
+                              alt={team.name}
+                              className="w-16 h-16 object-contain mb-2"
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = '/images/default-team-logo.png';
+                              }}
+                            />
+                            <p className="text-sm font-medium text-center text-gray-200">
+                              {team.name}
+                            </p>
+                          </div>
+                        </button>
+                      );
+                    })}
                 </div>
               ) : (
                 <div className="text-center py-12 bg-gray-800/50 rounded-lg">

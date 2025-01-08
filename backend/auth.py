@@ -5,13 +5,44 @@ from functools import wraps
 import os
 from werkzeug.security import generate_password_hash, check_password_hash
 import logging
+from flask_sqlalchemy import SQLAlchemy
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Initialize users list (in production, this would be a database)
-users = []
+db = SQLAlchemy()
+
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(256), nullable=False)
+    firstName = db.Column(db.String(80), nullable=False)
+    lastName = db.Column(db.String(80), nullable=False)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    timezone = db.Column(db.String(50), default='UTC')
+    avatarUrl = db.Column(db.String(200), default='/images/default-avatar.jpg')
+    createdAt = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    updatedAt = db.Column(db.DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    followed_teams = db.Column(db.JSON, default=list)
+    followed_players = db.Column(db.JSON, default=list)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'email': self.email,
+            'firstName': self.firstName,
+            'lastName': self.lastName,
+            'username': self.username,
+            'timezone': self.timezone,
+            'avatarUrl': self.avatarUrl,
+            'createdAt': self.createdAt.isoformat(),
+            'updatedAt': self.updatedAt.isoformat(),
+            'preferences': {
+                'teams': self.followed_teams or [],
+                'players': self.followed_players or []
+            }
+        }
 
 # Get secret key from environment variable or use a default for development
 SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'your-secret-key-here')
@@ -22,7 +53,6 @@ def token_required(f):
     def decorated(*args, **kwargs):
         token = None
 
-        # Get token from header
         if 'Authorization' in request.headers:
             auth_header = request.headers['Authorization']
             try:
@@ -36,17 +66,13 @@ def token_required(f):
             return jsonify({'success': False, 'message': 'Token is missing'}), 401
 
         try:
-            # Decode token
             data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-            current_user = next(
-                (user for user in users if user['id'] == data['user_id']), 
-                None
-            )
+            current_user = User.query.get(data['user_id'])
+            
             if current_user is None:
                 logger.error(f"User not found for token user_id: {data.get('user_id')}")
                 return jsonify({'success': False, 'message': 'User not found'}), 401
 
-            # Pass the user data to the decorated function
             return f(current_user=current_user, *args, **kwargs)
             
         except Exception as e:
@@ -61,14 +87,11 @@ class AuthService:
         """Register a new user"""
         try:
             logger.info("Starting user registration")
-            logger.debug(f"Registration data received: {data}")
-
-            # Validate data exists
+            
             if not data:
                 logger.error("No data provided for registration")
                 return {'success': False, 'message': 'No registration data provided'}, 400
 
-            # Validate required fields
             required_fields = ['email', 'password', 'firstName', 'lastName', 'username']
             missing_fields = [field for field in required_fields if not data.get(field)]
             
@@ -80,50 +103,44 @@ class AuthService:
                 }, 400
 
             # Check if email already exists
-            if any(user['email'] == data['email'] for user in users):
+            if User.query.filter_by(email=data['email']).first():
                 logger.warning(f"Email already registered: {data['email']}")
                 return {'success': False, 'message': 'Email already registered'}, 409
 
             # Check if username already exists
-            if any(user['username'] == data['username'] for user in users):
+            if User.query.filter_by(username=data['username']).first():
                 logger.warning(f"Username already taken: {data['username']}")
                 return {'success': False, 'message': 'Username already taken'}, 409
 
-            # Create new user object
-            new_user = {
-                'id': str(len(users) + 1),
-                'email': data['email'],
-                'password_hash': generate_password_hash(data['password']),
-                'firstName': data['firstName'],
-                'lastName': data['lastName'],
-                'username': data['username'],
-                'timezone': data.get('timezone', 'UTC'),
-                'avatarUrl': data.get('avatarUrl', '/images/default-avatar.jpg'),
-                'createdAt': datetime.datetime.utcnow().isoformat(),
-                'updatedAt': datetime.datetime.utcnow().isoformat()
-            }
+            new_user = User(
+                email=data['email'],
+                password_hash=generate_password_hash(data['password']),
+                firstName=data['firstName'],
+                lastName=data['lastName'],
+                username=data['username'],
+                timezone=data.get('timezone', 'UTC'),
+                avatarUrl=data.get('avatarUrl', '/images/default-avatar.jpg')
+            )
 
-            # Add user to users list
-            users.append(new_user)
-            logger.info(f"User registered successfully: {new_user['email']}")
+            db.session.add(new_user)
+            db.session.commit()
 
-            # Generate token for the new user
+            logger.info(f"User registered successfully: {new_user.email}")
+
             token = jwt.encode({
-                'user_id': new_user['id'],
+                'user_id': new_user.id,
                 'exp': datetime.datetime.utcnow() + datetime.timedelta(days=1)
             }, SECRET_KEY, algorithm="HS256")
 
-            # Create response without password hash
-            user_response = {k: v for k, v in new_user.items() if k != 'password_hash'}
-            
             return {
                 'success': True, 
                 'message': 'Registration successful',
-                'user': user_response,
+                'user': new_user.to_dict(),
                 'token': token
             }, 201
 
         except Exception as e:
+            db.session.rollback()
             logger.error(f"Registration error: {str(e)}", exc_info=True)
             return {
                 'success': False, 
@@ -140,31 +157,28 @@ class AuthService:
                 logger.error("Missing email or password")
                 return {'success': False, 'message': 'Email and password are required'}, 400
 
-            user = next((user for user in users if user['email'] == email), None)
+            user = User.query.filter_by(email=email).first()
             
             if not user:
                 logger.warning(f"No user found with email: {email}")
                 return {'success': False, 'message': 'Invalid email or password'}, 401
 
-            if not check_password_hash(user['password_hash'], password):
+            if not check_password_hash(user.password_hash, password):
                 logger.warning(f"Invalid password for user: {email}")
                 return {'success': False, 'message': 'Invalid email or password'}, 401
 
             token = jwt.encode({
-                'user_id': user['id'],
+                'user_id': user.id,
                 'exp': datetime.datetime.utcnow() + datetime.timedelta(days=1)
             }, SECRET_KEY, algorithm="HS256")
 
             logger.info(f"Login successful for user: {email}")
 
-            # Create response without password hash
-            user_response = {k: v for k, v in user.items() if k != 'password_hash'}
-
             return {
                 'success': True,
                 'message': 'Login successful',
                 'token': token,
-                'user': user_response
+                'user': user.to_dict()
             }, 200
 
         except Exception as e:
@@ -175,31 +189,12 @@ class AuthService:
             }, 500
 
     @staticmethod
-    def get_user_profile(user_id):
-        """Get user profile by ID"""
-        try:
-            user = next((user for user in users if user['id'] == user_id), None)
-            
-            if not user:
-                return {'success': False, 'message': 'User not found'}, 404
-
-            # Create response without password hash
-            user_response = {k: v for k, v in user.items() if k != 'password_hash'}
-            
-            return {'success': True, 'user': user_response}, 200
-
-        except Exception as e:
-            logger.error(f"Error in get_user_profile: {str(e)}", exc_info=True)
-            return {'success': False, 'message': str(e)}, 500
-
-    @staticmethod
     def update_user_profile(user_id, data):
         """Update user profile"""
         try:
-            user_index = next((index for (index, user) in enumerate(users) 
-                             if user['id'] == user_id), None)
+            user = User.query.get(user_id)
             
-            if user_index is None:
+            if user is None:
                 return {'success': False, 'message': 'User not found'}, 404
 
             # Don't allow email or password updates through this endpoint
@@ -207,33 +202,32 @@ class AuthService:
             update_data = {k: v for k, v in data.items() 
                           if k not in forbidden_updates}
             
-            # Update the user
-            users[user_index].update(update_data)
-            users[user_index]['updatedAt'] = datetime.datetime.utcnow().isoformat()
-
-            # Create response without password hash
-            user_response = {k: v for k, v in users[user_index].items() 
-                           if k != 'password_hash'}
+            for key, value in update_data.items():
+                setattr(user, key, value)
             
-            return {'success': True, 'user': user_response}, 200
+            db.session.commit()
+            
+            return {'success': True, 'user': user.to_dict()}, 200
 
         except Exception as e:
+            db.session.rollback()
             logger.error(f"Error in update_user_profile: {str(e)}", exc_info=True)
             return {'success': False, 'message': str(e)}, 500
 
 # Initialize with a default admin user if no users exist
-if not users:
-    admin_user = {
-        'id': '1',
-        'email': 'admin@example.com',
-        'password_hash': generate_password_hash('admin123'),
-        'firstName': 'Admin',
-        'lastName': 'User',
-        'username': 'admin',
-        'timezone': 'UTC',
-        'avatarUrl': '/images/default-avatar.jpg',
-        'createdAt': datetime.datetime.utcnow().isoformat(),
-        'updatedAt': datetime.datetime.utcnow().isoformat()
-    }
-    users.append(admin_user)
-    logger.info("Initialized default admin user") 
+def init_admin():
+    try:
+        if not User.query.first():
+            admin_user = User(
+                email='admin@example.com',
+                password_hash=generate_password_hash('admin123'),
+                firstName='Admin',
+                lastName='User',
+                username='admin'
+            )
+            db.session.add(admin_user)
+            db.session.commit()
+            logger.info("Initialized default admin user")
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error creating admin user: {str(e)}") 

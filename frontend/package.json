@@ -1,7 +1,7 @@
 {
   "name": "mlb-fan-feed",
   "version": "0.1.0",
-  "proxy": "http://localhost:5001",
+  "proxy": "http://localhost:5000",
   "dependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
     "@headlessui/react": "^1.7.18",

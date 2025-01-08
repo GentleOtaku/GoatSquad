@@ -7,15 +7,33 @@ import requests
 from datetime import datetime
 import os
 from google.cloud import translate
-from auth import AuthService, token_required
+from auth import AuthService, token_required, db, init_admin
 import grpc
 from routes.mlb import mlb
+from flask_migrate import Migrate
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Initialize extensions
+db.init_app(app)
+migrate = Migrate(app, db)
+
+# Create tables and initialize admin user
+with app.app_context():
+    try:
+        # Create all tables
+        db.create_all()
+        # Initialize admin user
+        init_admin()
+    except Exception as e:
+        logger.error(f"Database initialization error: {str(e)}")
+
 # Update CORS configuration
 CORS(app, resources={
     r"/*": {
@@ -264,10 +282,8 @@ class UserProfile(Resource):
             if not current_user:
                 return {'success': False, 'message': 'User not found'}, 404
                 
-            logger.info(f"Profile fetch for user ID: {current_user.get('id')}")
-            # Create response without password hash
-            user_response = {k: v for k, v in current_user.items() if k != 'password_hash'}
-            return {'success': True, 'user': user_response}, 200
+            logger.info(f"Profile fetch for user ID: {current_user.id}")
+            return {'success': True, 'user': current_user.to_dict()}, 200
             
         except Exception as e:
             logger.error(f"Profile fetch error: {str(e)}", exc_info=True)
@@ -281,8 +297,8 @@ class UserProfile(Resource):
                 return {'success': False, 'message': 'User not found'}, 404
                 
             data = request.get_json()
-            logger.info(f"Profile update for user ID: {current_user.get('id')}")
-            return AuthService.update_user_profile(current_user['id'], data)
+            logger.info(f"Profile update for user ID: {current_user.id}")
+            return AuthService.update_user_profile(current_user.id, data)
         except Exception as e:
             logger.error(f"Profile update error: {str(e)}", exc_info=True)
             return {'success': False, 'message': str(e)}, 500
@@ -320,5 +336,44 @@ def get_mlb_schedule():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/preferences', methods=['GET', 'PUT'])
+@token_required
+def handle_preferences(current_user):
+    if request.method == 'GET':
+        return jsonify({
+            'success': True,
+            'preferences': {
+                'teams': current_user.followed_teams or [],
+                'players': current_user.followed_players or []
+            }
+        })
+    
+    elif request.method == 'PUT':
+        try:
+            data = request.get_json()
+            current_user.followed_teams = data.get('teams', [])
+            current_user.followed_players = data.get('players', [])
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'message': 'Preferences updated successfully',
+                'preferences': {
+                    'teams': current_user.followed_teams,
+                    'players': current_user.followed_players
+                }
+            })
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({
+                'success': False,
+                'message': str(e)
+            }), 500
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.getenv('BACKEND_PORT', 5000)), debug=True)
+    app.run(
+        host='0.0.0.0', 
+        port=int(os.getenv('BACKEND_PORT', 5000)), 
+        debug=True,
+        use_reloader=False
+    )

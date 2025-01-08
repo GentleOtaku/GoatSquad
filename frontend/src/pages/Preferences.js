@@ -59,8 +59,20 @@ function Preferences() {
   }, [preferences?.players]);
 
   const handleSelection = ({ team, player }) => {
-    if (team) followTeam(team);
-    if (player) followPlayer(player);
+    if (team) {
+      // Check if team is already followed before adding
+      const isAlreadyFollowed = preferences?.teams?.some(t => t.id === team.id);
+      if (!isAlreadyFollowed) {
+        followTeam(team);
+      }
+    }
+    if (player) {
+      // Check if player is already followed before adding
+      const isAlreadyFollowed = preferences?.players?.some(p => p.id === player.id);
+      if (!isAlreadyFollowed) {
+        followPlayer(player);
+      }
+    }
   };
 
   const handleUnfollowTeam = (teamId) => {
