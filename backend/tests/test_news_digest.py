@@ -1,5 +1,8 @@
 import unittest
 from unittest.mock import patch, MagicMock
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from news_digest import get_news_digest, clean_content, get_search_content
 from google.genai import types
 

@@ -1,6 +1,10 @@
 import unittest
 from unittest.mock import patch
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app import app
+from routes.mlb import mlb
 import json
 
 class TestMLB(unittest.TestCase):

@@ -1,6 +1,6 @@
 from flask import jsonify, request
 import jwt
-import datetime
+from datetime import datetime, timezone, timedelta
 from functools import wraps
 import os
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -22,8 +22,9 @@ class User(db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     timezone = db.Column(db.String(50), default='UTC')
     avatarUrl = db.Column(db.String(200), default='/images/default-avatar.jpg')
-    createdAt = db.Column(db.DateTime, default=datetime.datetime.utcnow)
-    updatedAt = db.Column(db.DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    createdAt = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updatedAt = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), 
+                         onupdate=lambda: datetime.now(timezone.utc))
     followed_teams = db.Column(db.JSON, default=list)
     followed_players = db.Column(db.JSON, default=list)
 
@@ -129,7 +130,7 @@ class AuthService:
 
             token = jwt.encode({
                 'user_id': new_user.id,
-                'exp': datetime.datetime.utcnow() + datetime.timedelta(days=1)
+                'exp': datetime.now(timezone.utc) + timedelta(days=1)
             }, SECRET_KEY, algorithm="HS256")
 
             return {
@@ -169,7 +170,7 @@ class AuthService:
 
             token = jwt.encode({
                 'user_id': user.id,
-                'exp': datetime.datetime.utcnow() + datetime.timedelta(days=1)
+                'exp': datetime.now(timezone.utc) + timedelta(days=1)
             }, SECRET_KEY, algorithm="HS256")
 
             logger.info(f"Login successful for user: {email}")
@@ -192,7 +193,7 @@ class AuthService:
     def update_user_profile(user_id, data):
         """Update user profile"""
         try:
-            user = User.query.get(user_id)
+            user = db.session.get(User, user_id)
             
             if user is None:
                 return {'success': False, 'message': 'User not found'}, 404
