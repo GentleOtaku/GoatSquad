@@ -21,10 +21,20 @@ const LanguageSelector = () => {
     <select 
       value={language}
       onChange={handleChange}
-      className="p-2 rounded border border-gray-300 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      className="h-9 px-2 rounded-md text-sm font-medium
+        bg-white dark:bg-gray-700
+        text-gray-700 dark:text-gray-200
+        border border-gray-300 dark:border-gray-600
+        hover:border-gray-400 dark:hover:border-gray-500
+        focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400
+        transition-colors duration-200"
     >
       {languages.map(lang => (
-        <option key={lang.code} value={lang.code}>
+        <option 
+          key={lang.code} 
+          value={lang.code}
+          className="text-gray-900 dark:text-gray-200 bg-white dark:bg-gray-700"
+        >
           {lang.name}
         </option>
       ))}
