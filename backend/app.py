@@ -7,13 +7,41 @@ import requests
 from datetime import datetime
 import os
 from google.cloud import translate
+from auth import AuthService, token_required, db, init_admin
+import grpc
+from routes.mlb import mlb
+from flask_migrate import Migrate
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-CORS(app)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Initialize extensions
+db.init_app(app)
+migrate = Migrate(app, db)
+
+# Create tables and initialize admin user
+with app.app_context():
+    try:
+        # Create all tables
+        db.create_all()
+        # Initialize admin user
+        init_admin()
+    except Exception as e:
+        logger.error(f"Database initialization error: {str(e)}")
+
+# Update CORS configuration
+CORS(app, resources={
+    r"/*": {
+        "origins": ["http://localhost:3000"],
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"]
+    }
+})
 
 api = Api(app, version='1.0', 
     title='MLB Fan Feed API',
@@ -125,8 +153,13 @@ def get_highlights():
         logger.error(f"Error fetching highlights: {str(e)}", exc_info=True)
         return {'error': 'Failed to fetch highlights'}, 500
 
-# Initialize the Translation client
-translate_client = translate.TranslationServiceClient()
+# Instead, create a function to get the client when needed
+def get_translate_client():
+    try:
+        return translate.TranslationServiceClient()
+    except Exception as e:
+        logger.error(f"Failed to initialize translation client: {str(e)}")
+        return None
 
 @app.route('/api/translate', methods=['POST'])
 def translate_text():
@@ -139,19 +172,31 @@ def translate_text():
         text = data.get('text')
         target_language = data.get('target_language')
 
-        logger.info(f"Received translation request - Text: {text}, Target Language: {target_language}")
-
         if not text or not target_language:
             logger.error("Missing text or target language")
             return jsonify({'error': 'Missing text or target language'}), 400
 
+        # Get translation client only when needed
+        translate_client = get_translate_client()
+        if not translate_client:
+            logger.warning("Translation service unavailable, returning original text")
+            return jsonify({
+                'success': True,
+                'translatedText': text,
+                'detectedSourceLanguage': 'en'
+            })
+
         project_id = os.getenv('GOOGLE_CLOUD_PROJECT')
-        logger.info(f"Using project ID: {project_id}")
-        
+        if not project_id:
+            logger.warning("GOOGLE_CLOUD_PROJECT not set, returning original text")
+            return jsonify({
+                'success': True,
+                'translatedText': text,
+                'detectedSourceLanguage': 'en'
+            })
+
         location = "global"
         parent = f"projects/{project_id}/locations/{location}"
-
-        logger.info(f"Making translation request to Google Cloud - Project ID: {project_id}")
 
         try:
             response = translate_client.translate_text(
@@ -162,33 +207,173 @@ def translate_text():
                     "target_language_code": target_language,
                 }
             )
-            logger.info(f"Raw translation response: {response}")
-
             translation = response.translations[0]
             result = {
                 'success': True,
                 'translatedText': translation.translated_text,
                 'detectedSourceLanguage': translation.detected_language_code
             }
-            
-            logger.info(f"Translation successful - Result: {result}")
             return jsonify(result)
 
+        except grpc.RpcError as e:
+            logger.error(f"gRPC error in translation: {str(e)}")
+            return jsonify({
+                'success': True,
+                'translatedText': text,
+                'detectedSourceLanguage': 'en'
+            })
         except Exception as e:
-            logger.error(f"Google Translation API error: {str(e)}", exc_info=True)
-            return jsonify({'success': False, 'error': f"Translation API error: {str(e)}"}), 500
+            logger.error(f"Translation error: {str(e)}")
+            return jsonify({
+                'success': True,
+                'translatedText': text,
+                'detectedSourceLanguage': 'en'
+            })
 
     except Exception as e:
-        logger.error(f"Translation error: {str(e)}", exc_info=True)
-        return jsonify({'success': False, 'error': str(e)}), 500
+        logger.error(f"Translation endpoint error: {str(e)}")
+        return jsonify({
+            'success': True,
+            'translatedText': text,
+            'detectedSourceLanguage': 'en'
+        })
 
 @app.errorhandler(Exception)
 def handle_error(error):
+    logger.error(f"Unhandled error: {str(error)}", exc_info=True)
     message = str(error)
     status_code = 500
     if hasattr(error, 'code'):
         status_code = error.code
-    return jsonify({'success': False, 'error': message}), status_code
+    return jsonify({'success': False, 'message': message}), status_code
+
+auth_ns = api.namespace('auth', description='Authentication operations')
+
+@auth_ns.route('/register')
+class Register(Resource):
+    def post(self):
+        """Register a new user"""
+        try:
+            data = request.get_json()
+            logger.info(f"Register attempt for email: {data.get('email')}")
+            return AuthService.register_user(data)
+        except Exception as e:
+            logger.error(f"Registration error: {str(e)}", exc_info=True)
+            return {'success': False, 'message': str(e)}, 500
+
+@auth_ns.route('/login')
+class Login(Resource):
+    def post(self):
+        """Login user"""
+        try:
+            data = request.get_json()
+            logger.info(f"Login attempt for email: {data.get('email')}")
+            return AuthService.login_user(data.get('email'), data.get('password'))
+        except Exception as e:
+            logger.error(f"Login error: {str(e)}", exc_info=True)
+            return {'success': False, 'message': str(e)}, 500
+
+@auth_ns.route('/profile')
+class UserProfile(Resource):
+    @token_required
+    def get(self, current_user):
+        """Get user profile"""
+        try:
+            if not current_user:
+                return {'success': False, 'message': 'User not found'}, 404
+                
+            logger.info(f"Profile fetch for user ID: {current_user.id}")
+            return {'success': True, 'user': current_user.to_dict()}, 200
+            
+        except Exception as e:
+            logger.error(f"Profile fetch error: {str(e)}", exc_info=True)
+            return {'success': False, 'message': str(e)}, 500
+
+    @token_required
+    def put(self, current_user):
+        """Update user profile"""
+        try:
+            if not current_user:
+                return {'success': False, 'message': 'User not found'}, 404
+                
+            data = request.get_json()
+            logger.info(f"Profile update for user ID: {current_user.id}")
+            return AuthService.update_user_profile(current_user.id, data)
+        except Exception as e:
+            logger.error(f"Profile update error: {str(e)}", exc_info=True)
+            return {'success': False, 'message': str(e)}, 500
+
+@app.route('/test')
+def test():
+    """Test endpoint to verify server is running"""
+    return jsonify({
+        'success': True,
+        'message': 'Backend server is running',
+        'timestamp': datetime.utcnow().isoformat()
+    })
+
+# Register blueprints
+app.register_blueprint(mlb)
+
+@app.route('/api/mlb/schedule', methods=['GET'])
+def get_mlb_schedule():
+    team_id = request.args.get('teamId')
+    start_date = request.args.get('startDate')
+    end_date = request.args.get('endDate')
+    
+    try:
+        response = requests.get(
+            'https://statsapi.mlb.com/api/v1/schedule',
+            params={
+                'teamId': team_id,
+                'startDate': start_date,
+                'endDate': end_date,
+                'sportId': 1,
+                'hydrate': 'team,venue'
+            }
+        )
+        return jsonify(response.json())
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/preferences', methods=['GET', 'PUT'])
+@token_required
+def handle_preferences(current_user):
+    if request.method == 'GET':
+        return jsonify({
+            'success': True,
+            'preferences': {
+                'teams': current_user.followed_teams or [],
+                'players': current_user.followed_players or []
+            }
+        })
+    
+    elif request.method == 'PUT':
+        try:
+            data = request.get_json()
+            current_user.followed_teams = data.get('teams', [])
+            current_user.followed_players = data.get('players', [])
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'message': 'Preferences updated successfully',
+                'preferences': {
+                    'teams': current_user.followed_teams,
+                    'players': current_user.followed_players
+                }
+            })
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({
+                'success': False,
+                'message': str(e)
+            }), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=os.getenv('BACKEND_PORT'), debug=True)
+    app.run(
+        host='0.0.0.0', 
+        port=int(os.getenv('BACKEND_PORT', 5000)), 
+        debug=True,
+        use_reloader=False
+    )

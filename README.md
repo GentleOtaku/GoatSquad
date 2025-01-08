@@ -64,3 +64,21 @@ A personalized MLB news feed that delivers AI-powered updates about your favorit
    ```bash
    docker-compose up
    ```
+
+### Running Test Cases
+
+#### Frontend
+```bash
+npm test                           # Run all tests
+npm test -- --coverage            # Run tests with coverage
+npm test -- --watch              # Watch mode
+npm test -- ComponentName.test.js # Test specific file
+```
+
+#### Backend
+```bash
+pytest                           # Run all tests
+pytest -v                        # Verbose output
+pytest --cov=.                   # Coverage report
+pytest tests/test_file.py        # Test specific file
+```
