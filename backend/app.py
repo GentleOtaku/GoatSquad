@@ -9,6 +9,7 @@ import os
 from google.cloud import translate
 from auth import AuthService, token_required
 import grpc
+from routes.mlb import mlb
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -294,6 +295,9 @@ def test():
         'message': 'Backend server is running',
         'timestamp': datetime.utcnow().isoformat()
     })
+
+# Register blueprints
+app.register_blueprint(mlb)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.getenv('BACKEND_PORT', 5000)), debug=True)

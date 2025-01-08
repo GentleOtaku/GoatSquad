@@ -4,20 +4,35 @@ import TranslatedText from './TranslatedText';
 
 function TeamPlayerSelector({ onSelect, followedTeams = [], followedPlayers = [] }) {
   const [teams, setTeams] = useState([]);
-  const [rostersByTeam, setRostersByTeam] = useState({}); // Store rosters by team ID
+  const [rostersByTeam, setRostersByTeam] = useState({});
   const [selectedTeamFilter, setSelectedTeamFilter] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchType, setSearchType] = useState('teams');
+  const [error, setError] = useState(null);
 
   // Fetch teams on mount
   useEffect(() => {
     const fetchTeams = async () => {
+      setLoading(true);
+      setError(null);
       try {
-        const response = await axios.get('https://statsapi.mlb.com/api/v1/teams?sportId=1');
-        setTeams(response.data.teams);
+        console.log('Fetching teams...');
+        const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/mlb/teams`);
+        console.log('Teams response:', response.data);
+        
+        if (response.data && response.data.teams) {
+          const sortedTeams = response.data.teams.sort((a, b) => a.name.localeCompare(b.name));
+          setTeams(sortedTeams);
+          console.log('Sorted teams:', sortedTeams);
+        } else {
+          throw new Error('Invalid response format');
+        }
       } catch (error) {
         console.error('Error fetching teams:', error);
+        setTeams([]);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -30,15 +45,24 @@ function TeamPlayerSelector({ onSelect, followedTeams = [], followedPlayers = []
     
     setLoading(true);
     try {
-      const response = await axios.get(
-        `https://statsapi.mlb.com/api/v1/teams/${teamId}/roster?season=2024`
-      );
-      setRostersByTeam(prev => ({
-        ...prev,
-        [teamId]: response.data.roster || []
-      }));
+      console.log('Fetching roster from:', `${process.env.REACT_APP_BACKEND_URL}/api/mlb/roster/${teamId}`);
+      const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/mlb/roster/${teamId}`);
+      console.log('Roster response:', response.data);
+      
+      if (response.data && response.data.roster) {
+        setRostersByTeam(prev => ({
+          ...prev,
+          [teamId]: response.data.roster
+        }));
+      } else {
+        throw new Error('Invalid roster response format');
+      }
     } catch (error) {
       console.error('Error fetching roster:', error);
+      setRostersByTeam(prev => ({
+        ...prev,
+        [teamId]: []
+      }));
     } finally {
       setLoading(false);
     }
@@ -90,6 +114,28 @@ function TeamPlayerSelector({ onSelect, followedTeams = [], followedPlayers = []
     onSelect({ team, player });
   };
 
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-20">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (error && !teams.length) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-red-500 dark:text-red-400 mb-4">{error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+        >
+          <TranslatedText text="Retry" />
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Search input */}
@@ -137,49 +183,62 @@ function TeamPlayerSelector({ onSelect, followedTeams = [], followedPlayers = []
       {/* Results list */}
       <div className="mt-4">
         {loading ? (
-          <div className="text-center text-gray-500 dark:text-gray-400">
-            <TranslatedText text="Loading..." />
+          <div className="flex justify-center items-center py-20">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
           </div>
         ) : searchType === 'teams' ? (
           <div className="space-y-8">
             {/* Teams Section */}
             <section>
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Teams</h2>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                  <TranslatedText text="Teams" />
+                </h2>
                 <span className="text-sm text-gray-500 dark:text-gray-400">
                   {followedTeams.length} followed
                 </span>
               </div>
               
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {teams.map((team, index) => (
-                  <button
-                    key={team.id}
-                    onClick={() => onSelect({ team })}
-                    className={`p-4 rounded-lg border smooth-transition hover:shadow-md 
-                      ${
-                        followedTeams.some(t => t.id === team.id)
-                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-400'
-                          : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-500 bg-white dark:bg-gray-800'
-                      }
-                      opacity-0 animate-[fadeIn_0.3s_ease-in_forwards]`}
-                    style={{
-                      animationDelay: `${index * 50}ms`
-                    }}
-                  >
-                    <div className="relative w-16 h-16 mx-auto mb-2">
-                      <img
-                        src={`https://www.mlbstatic.com/team-logos/${team.id}.svg`}
-                        alt={team.name}
-                        className="w-full h-full object-contain dark:drop-shadow-[0_0_2px_rgba(255,255,255,0.8)]"
-                      />
-                    </div>
-                    <p className="text-sm text-center font-medium text-gray-900 dark:text-gray-100">
-                      {team.name}
-                    </p>
-                  </button>
-                ))}
-              </div>
+              {teams.length > 0 ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {teams
+                    .filter(team => 
+                      team.name.toLowerCase().includes(searchQuery.toLowerCase())
+                    )
+                    .map((team) => (
+                      <button
+                        key={team.id}
+                        onClick={() => handleSelection({ team })}
+                        className={`p-4 rounded-lg border transition-all duration-200 ${
+                          followedTeams.some(t => t.id === team.id)
+                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                            : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-500 bg-white dark:bg-gray-800'
+                        }`}
+                      >
+                        <div className="flex flex-col items-center">
+                          <img
+                            src={`https://www.mlbstatic.com/team-logos/${team.id}.svg`}
+                            alt={team.name}
+                            className="w-16 h-16 object-contain mb-2"
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = '/images/default-team-logo.png';
+                            }}
+                          />
+                          <p className="text-sm font-medium text-center text-gray-900 dark:text-white">
+                            {team.name}
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                  <p className="text-gray-600 dark:text-gray-400">
+                    <TranslatedText text="No teams found" />
+                  </p>
+                </div>
+              )}
             </section>
           </div>
         ) : searchType === 'players' ? (
@@ -225,49 +284,45 @@ function TeamPlayerSelector({ onSelect, followedTeams = [], followedPlayers = []
                   {getCurrentPlayers().map((player, index) => (
                     <button
                       key={player.person.id}
-                      onClick={() => onSelect({ player: player.person })}
-                      className={`p-4 rounded-lg border smooth-transition hover:shadow-md
-                        ${
-                          followedPlayers.some(p => p.id === player.person.id)
-                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-400'
-                            : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-500 bg-white dark:bg-gray-800'
-                        }
-                        opacity-0 animate-[fadeIn_0.3s_ease-in_forwards]`}
-                      style={{
-                        animationDelay: `${index * 50}ms`
-                      }}
+                      onClick={() => handleSelection({ player: player.person })}
+                      className={`p-4 rounded-lg border transition-all duration-200
+                        ${followedPlayers.some(p => p.id === player.person.id)
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                          : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-500 bg-white dark:bg-gray-800'
+                        }`}
                     >
-                      <div>
-                        <p className="text-center font-medium text-gray-900 dark:text-gray-100">
+                      <div className="flex flex-col items-center">
+                        <div className="w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mb-2">
+                          <span className="text-2xl font-bold text-gray-600 dark:text-gray-300">
+                            {player.person.primaryNumber || '#'}
+                          </span>
+                        </div>
+                        <p className="text-sm font-medium text-center text-gray-900 dark:text-white">
                           {player.person.fullName}
                         </p>
-                        <p className="text-sm text-center text-gray-500 dark:text-gray-400 mt-1">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                           {player.position.abbreviation}
                         </p>
                       </div>
                     </button>
                   ))}
                 </div>
+              ) : selectedTeamFilter ? (
+                <div className="text-center py-12 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                  <p className="text-gray-600 dark:text-gray-400">
+                    <TranslatedText text="No players found for the selected team" />
+                  </p>
+                </div>
               ) : (
                 <div className="text-center py-12 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
                   <p className="text-gray-600 dark:text-gray-400">
-                    {selectedTeamFilter 
-                      ? "No players found for the selected team"
-                      : "Select a team to view and follow players"}
+                    <TranslatedText text="Select a team to view players" />
                   </p>
                 </div>
               )}
             </section>
           </div>
-        ) : (
-          <div className="text-center py-12 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-            <p className="text-gray-600 dark:text-gray-400">
-              {selectedTeamFilter 
-                ? "No players found for the selected team"
-                : "Select a team to view and follow players"}
-            </p>
-          </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

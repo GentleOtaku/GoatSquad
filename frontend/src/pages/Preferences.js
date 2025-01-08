@@ -108,21 +108,27 @@ function Preferences() {
                   <TranslatedText text="Followed Teams" />
                 </h3>
                 <div className="space-y-2">
-                  {preferences?.teams?.filter(team => team.name).map(team => (
-                    <div key={team.id} 
-                      className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
-                    >
-                      <span className="text-gray-900 dark:text-white">
-                        <TranslatedText text={team.name} />
-                      </span>
-                      <button
-                        onClick={() => handleUnfollowTeam(team.id)}
-                        className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                  {preferences?.teams?.filter(team => team.name).length > 0 ? (
+                    preferences.teams.map(team => (
+                      <div key={team.id} 
+                        className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
                       >
-                        <TranslatedText text="Unfollow" />
-                      </button>
+                        <span className="text-gray-900 dark:text-white">
+                          <TranslatedText text={team.name} />
+                        </span>
+                        <button
+                          onClick={() => handleUnfollowTeam(team.id)}
+                          className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                        >
+                          <TranslatedText text="Unfollow" />
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-4 text-gray-500 dark:text-gray-400">
+                      <TranslatedText text="No teams selected" />
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
 
@@ -132,31 +138,37 @@ function Preferences() {
                   <TranslatedText text="Followed Players" />
                 </h3>
                 <div className="space-y-2">
-                  {preferences?.players?.filter(player => player.fullName).map(player => {
-                    const fullPlayerData = playerData[player.id] || player;
-                    return (
-                      <div key={player.id} 
-                        className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
-                      >
-                        <div className="flex flex-col">
-                          <span className="text-gray-900 dark:text-white">
-                            <TranslatedText text={fullPlayerData.fullName} />
-                          </span>
-                          {fullPlayerData.primaryPosition && (
-                            <span className="text-sm text-gray-500 dark:text-gray-400">
-                              <TranslatedText text={fullPlayerData.primaryPosition.abbreviation} />
-                            </span>
-                          )}
-                        </div>
-                        <button
-                          onClick={() => handleUnfollowPlayer(player.id)}
-                          className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                  {preferences?.players?.filter(player => player.fullName).length > 0 ? (
+                    preferences.players.map(player => {
+                      const fullPlayerData = playerData[player.id] || player;
+                      return (
+                        <div key={player.id} 
+                          className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
                         >
-                          <TranslatedText text="Unfollow" />
-                        </button>
-                      </div>
-                    );
-                  })}
+                          <div className="flex flex-col">
+                            <span className="text-gray-900 dark:text-white">
+                              <TranslatedText text={fullPlayerData.fullName} />
+                            </span>
+                            {fullPlayerData.primaryPosition && (
+                              <span className="text-sm text-gray-500 dark:text-gray-400">
+                                <TranslatedText text={fullPlayerData.primaryPosition.abbreviation} />
+                              </span>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => handleUnfollowPlayer(player.id)}
+                            className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                          >
+                            <TranslatedText text="Unfollow" />
+                          </button>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="text-center py-4 text-gray-500 dark:text-gray-400">
+                      <TranslatedText text="No players selected" />
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -213,13 +225,6 @@ function Preferences() {
       {error && (
         <div className="text-center text-red-600 py-4">
           <TranslatedText text={error} />
-        </div>
-      )}
-
-      {/* Empty state */}
-      {!preferences?.teams?.length && !preferences?.players?.length && (
-        <div className="text-center py-4 text-gray-500">
-          <TranslatedText text="No teams or players selected yet" />
         </div>
       )}
     </div>
