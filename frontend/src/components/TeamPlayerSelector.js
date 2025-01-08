@@ -15,11 +15,11 @@ function TeamPlayerSelector({ onSelect, followedTeams = [], followedPlayers = []
   // Fetch teams on mount
   useEffect(() => {
     const fetchTeams = async () => {
-      setLoading(true);
-      setError(null);
       try {
         console.log('Fetching teams...');
-        const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/mlb/teams`);
+        setLoading(true);
+        setError(null);
+        const response = await axios.get('https://statsapi.mlb.com/api/v1/teams?sportId=1');
         console.log('Teams response:', response.data);
         
         if (response.data && response.data.teams) {
@@ -31,6 +31,7 @@ function TeamPlayerSelector({ onSelect, followedTeams = [], followedPlayers = []
         }
       } catch (error) {
         console.error('Error fetching teams:', error);
+        setError(error.message || 'Failed to fetch teams');
         setTeams([]);
       } finally {
         setLoading(false);
@@ -131,7 +132,12 @@ function TeamPlayerSelector({ onSelect, followedTeams = [], followedPlayers = []
   if (loading && !teams.length) {
     return (
       <div className="flex justify-center items-center py-20">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        <div 
+          role="status"
+          className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"
+        >
+          <span className="sr-only">Loading...</span>
+        </div>
       </div>
     );
   }
@@ -139,12 +145,23 @@ function TeamPlayerSelector({ onSelect, followedTeams = [], followedPlayers = []
   if (error && !teams.length) {
     return (
       <div className="text-center py-8">
-        <p className="text-red-500 dark:text-red-400 mb-4">{error}</p>
+        <div className="text-red-500 dark:text-red-400 mb-4">
+          <TranslatedText 
+            text="Failed to fetch teams" 
+            data-testid="translated-failed-to-fetch-teams" 
+          />
+        </div>
         <button
-          onClick={() => window.location.reload()}
+          onClick={() => {
+            setError(null);
+            fetchTeams();
+          }}
           className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
         >
-          <TranslatedText text="Retry" />
+          <TranslatedText 
+            text="Retry" 
+            data-testid="translated-retry" 
+          />
         </button>
       </div>
     );
@@ -193,7 +210,7 @@ function TeamPlayerSelector({ onSelect, followedTeams = [], followedPlayers = []
               : 'bg-gray-700 text-gray-200 hover:bg-gray-600'
           }`}
         >
-          <TranslatedText text="Players" />
+          <TranslatedText text="Players" data-testid="translated-players" />
         </button>
       </div>
 
@@ -293,7 +310,12 @@ function TeamPlayerSelector({ onSelect, followedTeams = [], followedPlayers = []
               {/* Players Grid */}
               {rosterLoading ? (
                 <div className="flex justify-center items-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                  <div 
+                    role="status"
+                    className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"
+                  >
+                    <span className="sr-only">Loading...</span>
+                  </div>
                 </div>
               ) : selectedTeamFilter && getCurrentPlayers().length > 0 ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -301,6 +323,7 @@ function TeamPlayerSelector({ onSelect, followedTeams = [], followedPlayers = []
                     <button
                       key={player.person.id}
                       onClick={() => handleSelection({ player: player.person })}
+                      disabled={followedPlayers.some(p => p.id === player.person.id)}
                       className={`p-4 rounded-lg border transition-all duration-200
                         ${followedPlayers.some(p => p.id === player.person.id)
                           ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'

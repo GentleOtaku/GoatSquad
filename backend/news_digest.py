@@ -26,6 +26,19 @@ def get_news_digest(teams=None, players=None):
     logger.info(f"Received request for teams: {teams}, players: {players}")
     
     try:
+        # Validate inputs
+        if teams is None and players is None:
+            return {
+                'success': False,
+                'error': 'At least one team or player must be specified'
+            }
+        
+        if (teams is not None and len(teams) == 0) and (players is not None and len(players) == 0):
+            return {
+                'success': False,
+                'error': 'Empty teams and players lists provided'
+            }
+
         # Create a client with search capability
         client = genai.Client(api_key=api_key)
         
@@ -101,6 +114,12 @@ def get_news_digest(teams=None, players=None):
                     'content': clean_content(response.text),
                     'sources': get_search_content(response)
                 })
+
+        if not digests:
+            return {
+                'success': False,
+                'error': 'No content could be generated'
+            }
 
         logger.info(f"Generated {len(digests)} digests successfully")
         return {

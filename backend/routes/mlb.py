@@ -16,7 +16,10 @@ def get_teams():
         return jsonify(data)
     except requests.RequestException as e:
         logger.error(f"Error fetching teams: {str(e)}")
-        return jsonify({'error': str(e), 'message': 'Failed to fetch teams'}), 500
+        return jsonify({'error': str(e)}), 500
+    except Exception as e:
+        logger.error(f"Error fetching teams: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 @mlb.route('/api/mlb/roster/<int:team_id>')
 def get_roster(team_id):
@@ -31,4 +34,7 @@ def get_roster(team_id):
         return jsonify(data)
     except requests.RequestException as e:
         logger.error(f"Error fetching roster: {str(e)}")
-        return jsonify({'error': str(e), 'message': 'Failed to fetch roster'}), 500 
+        return jsonify({'error': str(e)}), 500
+    except Exception as e:
+        logger.error(f"Error fetching roster: {str(e)}")
+        return jsonify({'error': str(e)}), 500 

@@ -14,3 +14,5 @@ Jinja2==2.11.3
 SQLAlchemy==1.4.46
 Flask-Migrate==2.7.0
 Flask-Script==2.0.6
+pytest==7.4.0
+pytest-cov==4.1.0
