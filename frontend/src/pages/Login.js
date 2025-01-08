@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useDarkMode } from '../hooks/useDarkMode';
+import axios from 'axios';
 
 function Login() {
   const [email, setEmail] = useState('');
@@ -14,14 +15,29 @@ function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+    
     try {
-      // For demo purposes, using a mock token
-      const token = 'mock-jwt-token';
-      login(token);
-      const from = location.state?.from?.pathname || '/';
-      navigate(from);
+      console.log('Attempting login to:', `${process.env.REACT_APP_BACKEND_URL}/auth/login`);
+      const response = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/auth/login`, {
+        email,
+        password
+      });
+
+      if (response.data.success && response.data.token) {
+        await login(response.data.token);
+        const from = location.state?.from?.pathname || '/';
+        navigate(from);
+      } else {
+        setError(response.data.message || 'Invalid email or password');
+      }
     } catch (err) {
-      setError('Failed to log in');
+      console.error('Full error:', err);
+      if (err.code === 'ERR_NETWORK') {
+        setError('Cannot connect to server. Please check if the backend is running.');
+      } else {
+        setError(err.response?.data?.message || err.message || 'Failed to log in');
+      }
     }
   };
 
@@ -153,10 +169,11 @@ function Login() {
             <div className="mt-6 grid grid-cols-2 gap-3">
               <button
                 type="button"
-                className={`inline-flex w-full justify-center rounded-md border py-2 px-4 text-sm font-medium shadow-sm hover:bg-gray-50
+                disabled
+                className={`inline-flex w-full justify-center rounded-md border py-2 px-4 text-sm font-medium shadow-sm opacity-50 cursor-not-allowed
                   ${isDarkMode 
-                    ? 'border-gray-600 bg-gray-700 text-gray-200 hover:bg-gray-600' 
-                    : 'border-gray-300 bg-white text-gray-500 hover:bg-gray-50'}`}
+                    ? 'border-gray-600 bg-gray-700 text-gray-200' 
+                    : 'border-gray-300 bg-white text-gray-500'}`}
               >
                 <svg className="h-5 w-5" aria-hidden="true" viewBox="0 0 24 24">
                   <path
@@ -169,10 +186,11 @@ function Login() {
 
               <button
                 type="button"
-                className={`inline-flex w-full justify-center rounded-md border py-2 px-4 text-sm font-medium shadow-sm hover:bg-gray-50
+                disabled
+                className={`inline-flex w-full justify-center rounded-md border py-2 px-4 text-sm font-medium shadow-sm opacity-50 cursor-not-allowed
                   ${isDarkMode 
-                    ? 'border-gray-600 bg-gray-700 text-gray-200 hover:bg-gray-600' 
-                    : 'border-gray-300 bg-white text-gray-500 hover:bg-gray-50'}`}
+                    ? 'border-gray-600 bg-gray-700 text-gray-200' 
+                    : 'border-gray-300 bg-white text-gray-500'}`}
               >
                 <svg className="h-5 w-5" aria-hidden="true" viewBox="0 0 24 24">
                   <path
@@ -189,9 +207,9 @@ function Login() {
         {/* Free trial link */}
         <p className={`mt-4 text-center text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
           Not a member?{' '}
-          <a href="#" className="font-medium text-indigo-500 hover:text-indigo-400">
-            Click to sign up
-          </a>
+          <Link to="/register" className="font-medium text-indigo-500 hover:text-indigo-400">
+            Create an account
+          </Link>
         </p>
       </div>
 

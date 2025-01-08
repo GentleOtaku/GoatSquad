@@ -9,6 +9,8 @@ import Login from './pages/Login';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider } from './contexts/AuthContext';
 import { LanguageProvider } from './contexts/LanguageContext';
+import Profile from './pages/Profile';
+import Register from './pages/Register';
 
 function App() {
   return (
@@ -17,6 +19,7 @@ function App() {
         <Router>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
             <Route path="/" element={
               <ProtectedRoute>
                 <MainLayout>
@@ -42,6 +45,13 @@ function App() {
               <ProtectedRoute>
                 <MainLayout>
                   <Preferences />
+                </MainLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <Profile />
                 </MainLayout>
               </ProtectedRoute>
             } />

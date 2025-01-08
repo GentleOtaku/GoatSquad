@@ -1,18 +1,48 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useRef, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import TranslatedText from './TranslatedText';
 import LanguageSelector from './LanguageSelector';
 import { useDarkMode } from '../hooks/useDarkMode';
+import { useAuth } from '../contexts/AuthContext';
 
 function Navbar() {
   const { isDarkMode, toggleDarkMode } = useDarkMode();
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+  const buttonRef = useRef(null);
   
+  // Add click outside handler
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (
+        menuRef.current && 
+        !menuRef.current.contains(event.target) &&
+        !buttonRef.current.contains(event.target)
+      ) {
+        setIsProfileMenuOpen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   const navItems = [
     { path: '/', label: 'Home' },
     { path: '/news', label: 'News' },
     { path: '/calendar', label: 'Calendar' },
     { path: '/preferences', label: 'Preferences' }
   ];
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+    setIsProfileMenuOpen(false);
+  };
 
   return (
     <nav className="bg-white dark:bg-gray-800 shadow">
@@ -67,6 +97,58 @@ function Navbar() {
               )}
             </button>
             <LanguageSelector />
+            
+            {/* Profile Dropdown */}
+            <div className="relative ml-3">
+              <button
+                ref={buttonRef}
+                onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+                className="flex items-center"
+                aria-label="User menu"
+                aria-haspopup="true"
+              >
+                <img
+                  className="h-8 w-8 rounded-full"
+                  src="/images/default-avatar.jpg"
+                  alt="Profile"
+                />
+              </button>
+
+              {/* Dropdown Menu */}
+              {isProfileMenuOpen && (
+                <div 
+                  ref={menuRef}
+                  className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white dark:bg-gray-700 ring-1 ring-black ring-opacity-5 focus:outline-none z-50"
+                  role="menu"
+                  aria-orientation="vertical"
+                  aria-labelledby="user-menu"
+                >
+                  <Link
+                    to="/profile"
+                    className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600"
+                    role="menuitem"
+                    onClick={() => setIsProfileMenuOpen(false)}
+                  >
+                    <TranslatedText text="Your Profile" />
+                  </Link>
+                  <Link
+                    to="/settings"
+                    className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600"
+                    role="menuitem"
+                    onClick={() => setIsProfileMenuOpen(false)}
+                  >
+                    <TranslatedText text="Settings" />
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-left block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600"
+                    role="menuitem"
+                  >
+                    <TranslatedText text="Sign out" />
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
