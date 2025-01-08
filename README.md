@@ -67,7 +67,7 @@ A personalized MLB news feed that delivers AI-powered updates about your favorit
 
 ### Running Test Cases
 
-# Frontend
+#### Frontend
 ```bash
 npm test                           # Run all tests
 npm test -- --coverage            # Run tests with coverage
@@ -75,7 +75,7 @@ npm test -- --watch              # Watch mode
 npm test -- ComponentName.test.js # Test specific file
 ```
 
-# Backend
+#### Backend
 ```bash
 pytest                           # Run all tests
 pytest -v                        # Verbose output
