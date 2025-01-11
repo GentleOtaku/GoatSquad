@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { STORAGE_KEYS } from '../constants';
+import axios from 'axios';
+import { useAuth } from '../contexts/AuthContext';
 
 export const usePreferences = () => {
   const [preferences, setPreferences] = useState({
@@ -7,15 +8,22 @@ export const usePreferences = () => {
     players: []
   });
   const [isLoading, setIsLoading] = useState(true);
+  const { isAuthenticated } = useAuth();
 
-  // Load preferences from localStorage
+  // Load preferences from API
   useEffect(() => {
-    const loadPreferences = () => {
+    const loadPreferences = async () => {
+      if (!isAuthenticated) {
+        setIsLoading(false);
+        return;
+      }
+
       setIsLoading(true);
       try {
-        const teams = JSON.parse(localStorage.getItem(STORAGE_KEYS.FOLLOWED_TEAMS)) || [];
-        const players = JSON.parse(localStorage.getItem(STORAGE_KEYS.FOLLOWED_PLAYERS)) || [];
-        setPreferences({ teams, players });
+        const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/preferences`);
+        if (response.data.success) {
+          setPreferences(response.data.preferences);
+        }
       } catch (error) {
         console.error('Error loading preferences:', error);
         setPreferences({ teams: [], players: [] });
@@ -25,94 +33,84 @@ export const usePreferences = () => {
     };
 
     loadPreferences();
-  }, []);
+  }, [isAuthenticated]);
 
-  const followTeam = (team) => {
-    if (!team || !team.id) return; // Prevent empty team objects
-    
-    const teams = JSON.parse(localStorage.getItem(STORAGE_KEYS.FOLLOWED_TEAMS)) || [];
-    if (!teams.some(t => t.id === team.id)) {
-      const teamToStore = {
-        id: team.id,
-        name: team.name,
-        abbreviation: team.abbreviation,
-        teamName: team.teamName,
-        locationName: team.locationName,
-        shortName: team.shortName
-      };
-      const updatedTeams = [...teams, teamToStore];
-      localStorage.setItem(STORAGE_KEYS.FOLLOWED_TEAMS, JSON.stringify(updatedTeams));
-      setPreferences(prev => ({
-        ...prev,
-        teams: updatedTeams
-      }));
+  const savePreferences = async (newPreferences) => {
+    try {
+      const response = await axios.put(
+        `${process.env.REACT_APP_BACKEND_URL}/api/preferences`,
+        newPreferences
+      );
+      if (response.data.success) {
+        setPreferences(response.data.preferences);
+      }
+    } catch (error) {
+      console.error('Error saving preferences:', error);
+      throw error;
     }
   };
 
-  const followPlayer = (player) => {
-    if (!player || !player.id) return; // Prevent empty player objects
+  const followTeam = async (team) => {
+    if (!team || !team.id) return;
     
-    const players = JSON.parse(localStorage.getItem(STORAGE_KEYS.FOLLOWED_PLAYERS)) || [];
-    if (!players.some(p => p.id === player.id)) {
-      const playerToStore = {
-        id: player.id,
-        fullName: player.fullName,
-        firstName: player.firstName,
-        lastName: player.lastName,
-        primaryNumber: player.primaryNumber,
-        primaryPosition: player.position ? {
-          code: player.position.code,
-          name: player.position.name,
-          type: player.position.type,
-          abbreviation: player.position.abbreviation
-        } : null
-      };
+    const teamToStore = {
+      id: team.id,
+      name: team.name,
+      abbreviation: team.abbreviation,
+      teamName: team.teamName,
+      locationName: team.locationName,
+      shortName: team.shortName
+    };
 
-      const updatedPlayers = [...players, playerToStore];
-      localStorage.setItem(STORAGE_KEYS.FOLLOWED_PLAYERS, JSON.stringify(updatedPlayers));
-      setPreferences(prev => ({
-        ...prev,
-        players: updatedPlayers
-      }));
-    }
-  };
-
-  const unfollowTeam = (teamId) => {
-    const teams = JSON.parse(localStorage.getItem(STORAGE_KEYS.FOLLOWED_TEAMS)) || [];
-    const updatedTeams = teams.filter(t => t.id !== teamId);
-    localStorage.setItem(STORAGE_KEYS.FOLLOWED_TEAMS, JSON.stringify(updatedTeams));
-    setPreferences(prev => ({
-      ...prev,
+    const updatedTeams = [...preferences.teams, teamToStore];
+    await savePreferences({
+      ...preferences,
       teams: updatedTeams
-    }));
-
-    // If no teams and no players are left, set preferences to null
-    const players = JSON.parse(localStorage.getItem(STORAGE_KEYS.FOLLOWED_PLAYERS)) || [];
-    if (updatedTeams.length === 0 && players.length === 0) {
-      setPreferences(null);
-    }
+    });
   };
 
-  const unfollowPlayer = (playerId) => {
-    const players = JSON.parse(localStorage.getItem(STORAGE_KEYS.FOLLOWED_PLAYERS)) || [];
-    const updatedPlayers = players.filter(p => p.id !== playerId);
-    localStorage.setItem(STORAGE_KEYS.FOLLOWED_PLAYERS, JSON.stringify(updatedPlayers));
-    setPreferences(prev => ({
-      ...prev,
+  const followPlayer = async (player) => {
+    if (!player || !player.id) return;
+    
+    const playerToStore = {
+      id: player.id,
+      fullName: player.fullName,
+      firstName: player.firstName,
+      lastName: player.lastName,
+      primaryNumber: player.primaryNumber,
+      primaryPosition: player.position ? {
+        code: player.position.code,
+        name: player.position.name,
+        type: player.position.type,
+        abbreviation: player.position.abbreviation
+      } : null
+    };
+
+    const updatedPlayers = [...preferences.players, playerToStore];
+    await savePreferences({
+      ...preferences,
       players: updatedPlayers
-    }));
-
-    // If no players and no teams are left, set preferences to null
-    const teams = JSON.parse(localStorage.getItem(STORAGE_KEYS.FOLLOWED_TEAMS)) || [];
-    if (updatedPlayers.length === 0 && teams.length === 0) {
-      setPreferences(null);
-    }
+    });
   };
 
-  const clearPreferences = () => {
-    localStorage.removeItem(STORAGE_KEYS.FOLLOWED_TEAMS);
-    localStorage.removeItem(STORAGE_KEYS.FOLLOWED_PLAYERS);
-    setPreferences(null);
+  const unfollowTeam = async (teamId) => {
+    const updatedTeams = preferences.teams.filter(t => t.id !== teamId);
+    await savePreferences({
+      ...preferences,
+      teams: updatedTeams
+    });
+  };
+
+  const unfollowPlayer = async (playerId) => {
+    const updatedPlayers = preferences.players.filter(p => p.id !== playerId);
+    await savePreferences({
+      ...preferences,
+      players: updatedPlayers
+    });
+  };
+
+  const clearPreferences = async () => {
+    await savePreferences({ teams: [], players: [] });
   };
 
   return {

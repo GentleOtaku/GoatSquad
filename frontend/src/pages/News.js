@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import NewsDigest from '../components/NewsDigest';
 import { usePreferences } from '../hooks/usePreferences';
 import TranslatedText from '../components/TranslatedText';
+import PageTransition from '../components/PageTransition';
 
 function News() {
   const { preferences, isLoading } = usePreferences();
@@ -57,12 +58,14 @@ function News() {
   });
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 slide-up">
-      <NewsDigest 
-        teams={preferences.teams || []} 
-        players={preferences.players || []} 
-      />
-    </div>
+    <PageTransition>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <NewsDigest 
+          teams={preferences.teams || []} 
+          players={preferences.players || []} 
+        />
+      </div>
+    </PageTransition>
   );
 }
 

@@ -236,7 +236,7 @@ function NewsDigest({ teams, players }) {
     );
   }
 
-  if (error) {
+  if (error && !digests.length && !highlights.length) {
     return (
       <div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
         <div className="text-red-600 dark:text-red-400">

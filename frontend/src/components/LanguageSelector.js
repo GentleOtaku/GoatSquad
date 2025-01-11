@@ -31,13 +31,7 @@ const LanguageSelector = () => {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="inline-flex items-center px-3 py-2 rounded-md text-sm font-medium
-          bg-white dark:bg-gray-800 
-          text-gray-700 dark:text-gray-200
-          border border-gray-300 dark:border-gray-700
-          hover:bg-gray-50 dark:hover:bg-gray-700
-          focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-100 focus:ring-blue-500
-          shadow-sm"
+        className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
       >
         {currentLanguage}
         <svg 
@@ -51,7 +45,7 @@ const LanguageSelector = () => {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-40 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5">
+        <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white dark:bg-gray-700 ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
           <div className="py-1" role="menu" aria-orientation="vertical">
             {languages.map(lang => (
               <button
@@ -60,10 +54,7 @@ const LanguageSelector = () => {
                   setLanguage(lang.code);
                   setIsOpen(false);
                 }}
-                className="w-full text-left px-4 py-2 text-sm
-                  text-gray-700 dark:text-gray-200
-                  hover:bg-gray-100 dark:hover:bg-gray-700
-                  focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700"
+                className="w-full text-left block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600"
                 role="menuitem"
               >
                 {lang.name}

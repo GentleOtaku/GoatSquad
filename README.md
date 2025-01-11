@@ -1,5 +1,8 @@
 # MLB Fan Feed
 
+[![Tests](https://github.com/{username}/{repo}/actions/workflows/tests.yml/badge.svg)](https://github.com/{username}/{repo}/actions/workflows/tests.yml)
+[![codecov](https://codecov.io/gh/{username}/{repo}/branch/main/graph/badge.svg)](https://codecov.io/gh/{username}/{repo})
+
 A personalized MLB news feed that delivers AI-powered updates about your favorite team and player.
 
 ## Features
