@@ -8,6 +8,8 @@ beautifulsoup4==4.12.2
 requests==2.31.0
 pandas==2.1.4
 google-cloud-translate>=3.0.0
+sqlalchemy 
+psychopg2
 Flask-SQLAlchemy>=2.5.1,<3.0.0
 markupsafe==2.0.1
 Jinja2==2.11.3
