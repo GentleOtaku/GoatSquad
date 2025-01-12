@@ -5,22 +5,7 @@ from sklearn.neighbors import NearestNeighbors
 import joblib
 import os
 from sqlalchemy import create_engine
-
-def load_data():
-    DATABASE_URL = "postgresql+psycopg2://postgres:vibhas69@34.71.48.54:5432/user_ratings_db"
-    engine = create_engine(DATABASE_URL)
-    
-    query = "SELECT * FROM user_reel_ratings"  
-    
-    try:
-        with engine.connect() as connection:
-            ratings = pd.read_sql_query(query, connection)
-    except Exception as e:
-        print(f"Error fetching data: {e}")
-        return None
-
-    return ratings
-
+from db import load_data
 
 def build_and_save_model(user_reel_matrix, model_path='knn_model.pkl'):
     user_reel_matrix = user_reel_matrix.astype(float)
