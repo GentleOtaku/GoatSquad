@@ -95,7 +95,7 @@ function Preferences() {
 
   if (error) {
     return (
-      <div className="text-red-500 p-4">
+      <div className="text-red-500 dark:text-red-400 p-4">
         Error: {error}
       </div>
     );
@@ -104,7 +104,7 @@ function Preferences() {
   return (
     <PageTransition>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-8">
           <TranslatedText text="Follow Teams & Players" />
         </h1>
 
@@ -126,16 +126,16 @@ function Preferences() {
               <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 space-y-6">
                 {/* Followed Teams */}
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
                     <TranslatedText text="Followed Teams" />
                   </h3>
                   <div className="space-y-2">
                     {preferences?.teams?.filter(team => team.name).length > 0 ? (
                       preferences.teams.map(team => (
                         <div key={team.id} 
-                          className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                          className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
                         >
-                          <span className="text-gray-900 dark:text-white">
+                          <span className="text-gray-900 dark:text-gray-100">
                             <TranslatedText text={team.name} />
                           </span>
                           <button
@@ -156,7 +156,7 @@ function Preferences() {
 
                 {/* Followed Players */}
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
                     <TranslatedText text="Followed Players" />
                   </h3>
                   <div className="space-y-2">
@@ -165,10 +165,10 @@ function Preferences() {
                         const fullPlayerData = playerData[player.id] || player;
                         return (
                           <div key={player.id} 
-                            className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                            className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
                           >
                             <div className="flex flex-col">
-                              <span className="text-gray-900 dark:text-white">
+                              <span className="text-gray-900 dark:text-gray-100">
                                 <TranslatedText text={fullPlayerData.fullName} />
                               </span>
                               {fullPlayerData.primaryPosition && (
@@ -238,7 +238,7 @@ function Preferences() {
 
         {/* Loading state */}
         {loading && (
-          <div className="text-center py-4">
+          <div className="text-center py-4 text-gray-600 dark:text-gray-400">
             <TranslatedText text="Loading..." />
           </div>
         )}

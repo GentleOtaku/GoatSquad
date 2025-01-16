@@ -178,9 +178,9 @@ function TeamPlayerSelector({ onSelect, followedTeams = [], followedPlayers = []
 
   return (
     <div className="space-y-6">
-      {/* Search input - Updated styling */}
+      {/* Search input */}
       <div className="w-full">
-        <label htmlFor="search" className="block text-lg font-medium text-gray-200 mb-2">
+        <label htmlFor="search" className="block text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
           <TranslatedText text="Search teams or players" />
         </label>
         <div className="relative">
@@ -188,8 +188,8 @@ function TeamPlayerSelector({ onSelect, followedTeams = [], followedPlayers = []
             type="text"
             name="search"
             id="search"
-            className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg
-              text-gray-200 placeholder-gray-400
+            className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg
+              text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400
               focus:ring-2 focus:ring-blue-500 focus:border-blue-500
               transition-colors duration-200"
             placeholder={searchType === 'teams' ? 'Search teams...' : 'Search players...'}
@@ -199,14 +199,14 @@ function TeamPlayerSelector({ onSelect, followedTeams = [], followedPlayers = []
         </div>
       </div>
 
-      {/* Toggle buttons - Updated styling to match */}
+      {/* Toggle buttons */}
       <div className="flex space-x-4 mt-4">
         <button
           onClick={() => setSearchType('teams')}
           className={`px-6 py-3 rounded-lg transition-colors duration-200 ${
             searchType === 'teams'
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-700 text-gray-200 hover:bg-gray-600'
+              ? 'bg-blue-600 text-white dark:bg-blue-500'
+              : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'
           }`}
         >
           <TranslatedText text="Teams" />
@@ -215,11 +215,11 @@ function TeamPlayerSelector({ onSelect, followedTeams = [], followedPlayers = []
           onClick={() => setSearchType('players')}
           className={`px-6 py-3 rounded-lg transition-colors duration-200 ${
             searchType === 'players'
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-700 text-gray-200 hover:bg-gray-600'
+              ? 'bg-blue-600 text-white dark:bg-blue-500'
+              : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'
           }`}
         >
-          <TranslatedText text="Players" data-testid="translated-players" />
+          <TranslatedText text="Players" />
         </button>
       </div>
 
@@ -230,10 +230,10 @@ function TeamPlayerSelector({ onSelect, followedTeams = [], followedPlayers = []
             {/* Teams Section */}
             <section>
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold text-gray-200">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
                   <TranslatedText text="Teams" />
                 </h2>
-                <span className="text-gray-400">
+                <span className="text-gray-600 dark:text-gray-400">
                   {followedTeams.length} followed
                 </span>
               </div>
@@ -267,7 +267,7 @@ function TeamPlayerSelector({ onSelect, followedTeams = [], followedPlayers = []
                                 e.target.src = '/images/default-team-logo.png';
                               }}
                             />
-                            <p className="text-sm font-medium text-center text-gray-200">
+                            <p className="text-sm font-medium text-center text-gray-900 dark:text-gray-100">
                               {team.name}
                             </p>
                           </div>
@@ -276,8 +276,8 @@ function TeamPlayerSelector({ onSelect, followedTeams = [], followedPlayers = []
                     })}
                 </div>
               ) : (
-                <div className="text-center py-12 bg-gray-800/50 rounded-lg">
-                  <p className="text-gray-400">
+                <div className="text-center py-12 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                  <p className="text-gray-600 dark:text-gray-400">
                     <TranslatedText text="No teams found" />
                   </p>
                 </div>
