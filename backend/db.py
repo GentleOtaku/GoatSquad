@@ -13,7 +13,7 @@ def load_data():
     except Exception as e:
         print(f"Error fetching data: {e}")
         return None
-
+    print(ratings)
     return ratings
 
 def add(user_id, reel_id, rating):
@@ -45,5 +45,5 @@ def remove(user_id, reel_id):
 
 if __name__ == "__main__":
     # test connecitons 
-    remove("69", "69")
+    load_data()
 
