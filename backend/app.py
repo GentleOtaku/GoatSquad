@@ -14,6 +14,10 @@ from flask_migrate import Migrate
 from google.cloud.sql.connector import Connector
 import sqlalchemy
 from werkzeug.middleware.proxy_fix import ProxyFix
+from cfknn import load_model, recommend_reels, build_and_save_model, run_main
+from db import load_data, add, remove
+
+DATABASE_URL = "postgresql+psycopg2://postgres:vibhas69@34.71.48.54:5432/user_ratings_db"
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -26,8 +30,8 @@ def init_connection_pool():
     db_name = os.getenv("DB_NAME")
     
     # Connect through Cloud SQL Proxy
-    DATABASE_URL = f"postgresql://{db_user}:{db_pass}@localhost:5432/{db_name}"
-    return DATABASE_URL
+    #DATABASE_URL = f"postgresql://{db_user}:{db_pass}@localhost:5432/{db_name}"
+    return "postgresql+psycopg2://postgres:vibhas69@34.71.48.54:5432/user_ratings_db"
 
 app = Flask(__name__)
 
@@ -65,6 +69,8 @@ CORS(app, resources={
 api = Api(app, version='1.0', 
     title='MLB Fan Feed API',
     description='API for MLB fan feed features')
+
+
 
 news_ns = api.namespace('news', description='News operations')
 
@@ -172,6 +178,46 @@ def get_highlights():
         logger.error(f"Error fetching highlights: {str(e)}", exc_info=True)
         return {'error': 'Failed to fetch highlights'}, 500
 
+@app.route('/recommend/add', methods=['POST'])
+def add_rating():
+    """Add a user reel rating"""
+    try:
+        data = request.get_json()
+        user_id, reel_id, rating = data.get('user_id'), data.get('reel_id'), data.get('rating')
+        if not all([user_id, reel_id, rating]):
+            return jsonify({'success': False, 'message': 'Missing required fields'}), 400
+        add(user_id, reel_id, rating)
+        return jsonify({'success': True, 'message': 'Rating added successfully'}), 200
+    except Exception as e:
+        logger.error(f"Error adding rating: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/recommend/remove', methods=['DELETE'])
+def remove_rating():
+    """Remove a user reel rating"""
+    try:
+        data = request.get_json()
+        user_id, reel_id = data.get('user_id'), data.get('reel_id')
+        if not all([user_id, reel_id]):
+            return jsonify({'success': False, 'message': 'Missing required fields'}), 400
+        remove(user_id, reel_id)
+        return jsonify({'success': True, 'message': 'Rating removed successfully'}), 200
+    except Exception as e:
+        logger.error(f"Error removing rating: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/recommend/predict', methods=['GET'])
+def predict_recommendations():
+    """Get reel recommendations for a user"""
+    try:
+        id = request.args.get('user_id', type=int)
+        recommendations = request.args.get('num_recommendations', 5, type=int)
+        run_main(user_id = id, num_recommendations= recommendations, model_path='knn_model_sql.pkl')
+        return jsonify({'success': True, 'recommendations': recommendations}), 200
+    except Exception as e:
+        logger.error(f"Error predicting recommendations: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'message': str(e)}), 500
+    
 # Initialize the translation client
 translate_client = translate.Client()
 
@@ -251,10 +297,10 @@ class UserProfile(Resource):
         try:
             if not current_user:
                 return {'success': False, 'message': 'User not found'}, 404
-                
+
             logger.info(f"Profile fetch for user ID: {current_user.client_id}")
             return {'success': True, 'user': current_user.to_dict()}, 200
-            
+
         except Exception as e:
             logger.error(f"Profile fetch error: {str(e)}", exc_info=True)
             return {'success': False, 'message': str(e)}, 500
@@ -265,7 +311,7 @@ class UserProfile(Resource):
         try:
             if not current_user:
                 return {'success': False, 'message': 'User not found'}, 404
-                
+
             data = request.get_json()
             logger.info(f"Profile update for user ID: {current_user.client_id}")
             return AuthService.update_user_profile(current_user.client_id, data)
@@ -416,7 +462,7 @@ def test_endpoint():
 if __name__ == '__main__':
     app.run(
         host='0.0.0.0', 
-        port=int(os.getenv('BACKEND_PORT', 5000)),
+        port=int(os.getenv('BACKEND_PORT', 5001)),
         debug=True,
         use_reloader=False
     )

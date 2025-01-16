@@ -16,7 +16,7 @@ def build_and_save_model(user_reel_matrix, model_path='knn_model.pkl'):
     print(f"Model trained and saved to {model_path}")
     return model_knn, user_reel_matrix
 
-def load_model(model_path='knn_model.pkl'):
+def load_model(model_path='knn_model_sql.pkl'):
     if os.path.exists(model_path):
         print(f"Loading model from {model_path}...")
         model_knn, user_reel_matrix = joblib.load(model_path)
@@ -41,20 +41,16 @@ def recommend_reels(user_id, model_knn, user_reel_matrix, num_recommendations=5)
     for reel_id, score in recommended_reels:
         print(f"Reel ID: {reel_id}, Predicted Score: {score}")
 
-def main():
+def run_main(user_id=10, num_recommendations=3, model_path='knn_model_sql.pkl'):
     ratings = load_data()
     if ratings is None:
         return
     user_reel_matrix = ratings.pivot_table(index='user_id', columns='reel_id', values='rating', fill_value=0)
-    
-    model_path = 'knn_model_sql.pkl'
+
     model_knn, user_reel_matrix_loaded = load_model(model_path)
     if model_knn is None:
         model_knn, user_reel_matrix_loaded = build_and_save_model(user_reel_matrix, model_path)
 
-    user_id = 10  
-    num_recommendations = 3
     recommend_reels(user_id, model_knn, user_reel_matrix_loaded, num_recommendations)
 
-if __name__ == "__main__":
-    main()
+run_main()
