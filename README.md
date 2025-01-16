@@ -55,6 +55,13 @@ A personalized MLB news feed that delivers AI-powered updates about your favorit
    cd frontend
    npm start
    ```
+3. Start Proxy Server (Open New Terminal)
+   ```bash 
+   curl -o cloud_sql_proxy https://dl.google.com/cloudsql/cloud_sql_proxy.darwin.amd64
+   chmod +x cloud_sql_proxy
+   ./cloud_sql_proxy -instances=goatsquad:us-central1:goatsql=tcp:5432
+   ```
+
 
 ### Docker Setup
 
