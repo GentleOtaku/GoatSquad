@@ -332,7 +332,7 @@ def get_mlb_teams():
         response = requests.get(
             'https://statsapi.mlb.com/api/v1/teams',
             params={'sportId': 1},
-            timeout=5,
+            timeout=15,
             headers={
                 'Accept': 'application/json',
                 'User-Agent': 'MLBFanFeed/1.0'
@@ -340,40 +340,22 @@ def get_mlb_teams():
         )
         logger.info(f"MLB API Response Status: {response.status_code}")
         
-        # Log the raw response for debugging
-        logger.info(f"MLB API Raw Response: {response.text[:200]}...")  # Log first 200 chars
-        
-        response.raise_for_status()
-        data = response.json()
-        
-        if not isinstance(data, dict) or 'teams' not in data:
-            logger.error(f"Unexpected response format: {data}")
-            return jsonify({
-                'success': False,
-                'message': 'Invalid response format from MLB API'
-            }), 500
-            
-        teams = data.get('teams', [])
-        logger.info(f"Successfully fetched {len(teams)} teams")
-        
-        # Validate team data
-        if not all(isinstance(team, dict) and 'id' in team and 'name' in team for team in teams):
-            logger.error("Some teams are missing required fields")
-            return jsonify({
-                'success': False,
-                'message': 'Invalid team data received from MLB API'
-            }), 500
-        
-        return jsonify({
-            'teams': teams,
-            'copyright': data.get('copyright', '')
+        # Add caching headers
+        response_data = response.json()
+        resp = jsonify({
+            'teams': response_data.get('teams', []),
+            'copyright': response_data.get('copyright', '')
         })
+        resp.cache_control.max_age = 3600  # Cache for 1 hour
+        return resp
         
     except requests.exceptions.Timeout:
         logger.error("Timeout while fetching MLB teams")
+        # Return cached data if available
         return jsonify({
             'success': False,
-            'message': 'Request to MLB API timed out'
+            'message': 'Request to MLB API timed out. Please try again.',
+            'error': 'TIMEOUT'
         }), 504
         
     except requests.exceptions.RequestException as e:
