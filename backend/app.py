@@ -17,8 +17,6 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from cfknn import load_model, recommend_reels, build_and_save_model, run_main
 from db import load_data, add, remove
 
-DATABASE_URL = "postgresql+psycopg2://postgres:vibhas69@34.71.48.54:5432/user_ratings_db"
-
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -30,8 +28,8 @@ def init_connection_pool():
     db_name = os.getenv("DB_NAME")
     
     # Connect through Cloud SQL Proxy
-    #DATABASE_URL = f"postgresql://{db_user}:{db_pass}@localhost:5432/{db_name}"
-    return "postgresql+psycopg2://postgres:vibhas69@34.71.48.54:5432/user_ratings_db"
+    DATABASE_URL = f"postgresql://{db_user}:{db_pass}@localhost:5432/{db_name}"
+    return DATABASE_URL
 
 app = Flask(__name__)
 
@@ -462,7 +460,7 @@ def test_endpoint():
 if __name__ == '__main__':
     app.run(
         host='0.0.0.0', 
-        port=int(os.getenv('BACKEND_PORT', 5001)),
+        port=int(os.getenv('BACKEND_PORT', 5000)),
         debug=True,
         use_reloader=False
     )
