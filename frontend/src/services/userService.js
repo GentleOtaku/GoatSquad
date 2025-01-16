@@ -36,7 +36,7 @@ export const userService = {
     } catch (error) {
       console.error('Profile fetch error:', error);
       if (error.code === 'ERR_NETWORK') {
-        throw { message: 'Cannot connect to server. Please check if the backend is running.' };
+        throw new Error('Cannot connect to server. Please check if the backend is running.');
       }
       if (error.response) {
         throw error.response.data;
@@ -52,7 +52,7 @@ export const userService = {
     } catch (error) {
       console.error('Profile update error:', error);
       if (error.code === 'ERR_NETWORK') {
-        throw { message: 'Cannot connect to server. Please check if the backend is running.' };
+        throw new Error('Cannot connect to server. Please check if the backend is running.');
       }
       if (error.response) {
         throw error.response.data;

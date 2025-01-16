@@ -6,13 +6,14 @@ import logging
 import requests
 from datetime import datetime
 import os
-from google.cloud import translate
+from google.cloud import translate_v2 as translate
 from auth import AuthService, token_required, db, init_admin
 import grpc
 from routes.mlb import mlb
 from flask_migrate import Migrate
 from google.cloud.sql.connector import Connector
 import sqlalchemy
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -32,6 +33,7 @@ app = Flask(__name__)
 
 # Configure database connection
 app.config['SQLALCHEMY_DATABASE_URI'] = init_connection_pool()
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize extensions
@@ -54,7 +56,9 @@ CORS(app, resources={
     r"/*": {
         "origins": ["http://localhost:3000"],
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization"]
+        "allow_headers": ["Content-Type", "Authorization"],
+        "expose_headers": ["Content-Range", "X-Content-Range"],
+        "supports_credentials": True
     }
 })
 
@@ -168,90 +172,41 @@ def get_highlights():
         logger.error(f"Error fetching highlights: {str(e)}", exc_info=True)
         return {'error': 'Failed to fetch highlights'}, 500
 
-# Instead, create a function to get the client when needed
-def get_translate_client():
-    try:
-        return translate.TranslationServiceClient()
-    except Exception as e:
-        logger.error(f"Failed to initialize translation client: {str(e)}")
-        return None
+# Initialize the translation client
+translate_client = translate.Client()
 
 @app.route('/api/translate', methods=['POST'])
 def translate_text():
-    """Translate text to target language using Google Cloud Translation API"""
     try:
-        logger.info("Received translation request")
         data = request.get_json()
-        logger.info(f"Request data: {data}")
-        
         text = data.get('text')
-        target_language = data.get('target_language')
+        target_language = data.get('target_language', 'en')
 
-        if not text or not target_language:
-            logger.error("Missing text or target language")
-            return jsonify({'error': 'Missing text or target language'}), 400
-
-        # Get translation client only when needed
-        translate_client = get_translate_client()
-        if not translate_client:
-            logger.warning("Translation service unavailable, returning original text")
+        if not text:
             return jsonify({
-                'success': True,
-                'translatedText': text,
-                'detectedSourceLanguage': 'en'
-            })
+                'success': False,
+                'message': 'No text provided for translation'
+            }), 400
 
-        project_id = os.getenv('GOOGLE_CLOUD_PROJECT')
-        if not project_id:
-            logger.warning("GOOGLE_CLOUD_PROJECT not set, returning original text")
-            return jsonify({
-                'success': True,
-                'translatedText': text,
-                'detectedSourceLanguage': 'en'
-            })
+        # Perform translation
+        result = translate_client.translate(
+            text,
+            target_language=target_language
+        )
 
-        location = "global"
-        parent = f"projects/{project_id}/locations/{location}"
-
-        try:
-            response = translate_client.translate_text(
-                request={
-                    "parent": parent,
-                    "contents": [text],
-                    "mime_type": "text/plain",
-                    "target_language_code": target_language,
-                }
-            )
-            translation = response.translations[0]
-            result = {
-                'success': True,
-                'translatedText': translation.translated_text,
-                'detectedSourceLanguage': translation.detected_language_code
-            }
-            return jsonify(result)
-
-        except grpc.RpcError as e:
-            logger.error(f"gRPC error in translation: {str(e)}")
-            return jsonify({
-                'success': True,
-                'translatedText': text,
-                'detectedSourceLanguage': 'en'
-            })
-        except Exception as e:
-            logger.error(f"Translation error: {str(e)}")
-            return jsonify({
-                'success': True,
-                'translatedText': text,
-                'detectedSourceLanguage': 'en'
-            })
-
-    except Exception as e:
-        logger.error(f"Translation endpoint error: {str(e)}")
         return jsonify({
             'success': True,
-            'translatedText': text,
-            'detectedSourceLanguage': 'en'
+            'translatedText': result['translatedText'],
+            'sourceLanguage': result['detectedSourceLanguage']
         })
+
+    except Exception as e:
+        logger.error(f"Translation error: {str(e)}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': 'Translation failed',
+            'error': str(e)
+        }), 500
 
 @app.errorhandler(Exception)
 def handle_error(error):
@@ -385,10 +340,83 @@ def handle_preferences(current_user):
                 'message': str(e)
             }), 500
 
+@app.route('/api/mlb/teams', methods=['GET'])
+def get_mlb_teams():
+    try:
+        logger.info("Attempting to fetch MLB teams...")
+        response = requests.get(
+            'https://statsapi.mlb.com/api/v1/teams',
+            params={'sportId': 1},
+            timeout=15,
+            headers={
+                'Accept': 'application/json',
+                'User-Agent': 'MLBFanFeed/1.0'
+            }
+        )
+        logger.info(f"MLB API Response Status: {response.status_code}")
+        
+        # Add caching headers
+        response_data = response.json()
+        resp = jsonify({
+            'teams': response_data.get('teams', []),
+            'copyright': response_data.get('copyright', '')
+        })
+        resp.cache_control.max_age = 3600  # Cache for 1 hour
+        return resp
+        
+    except requests.exceptions.Timeout:
+        logger.error("Timeout while fetching MLB teams")
+        # Return cached data if available
+        return jsonify({
+            'success': False,
+            'message': 'Request to MLB API timed out. Please try again.',
+            'error': 'TIMEOUT'
+        }), 504
+        
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error fetching MLB teams: {str(e)}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': f'Failed to fetch teams from MLB API: {str(e)}'
+        }), 500
+        
+    except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': f'An unexpected error occurred: {str(e)}'
+        }), 500
+
+@app.errorhandler(requests.exceptions.RequestException)
+def handle_request_error(error):
+    logger.error(f"Request error: {str(error)}")
+    return jsonify({
+        'success': False,
+        'message': 'External API request failed',
+        'error': str(error)
+    }), 500
+
+@app.errorhandler(Exception)
+def handle_general_error(error):
+    logger.error(f"Unexpected error: {str(error)}")
+    return jsonify({
+        'success': False,
+        'message': 'An unexpected error occurred',
+        'error': str(error)
+    }), 500
+
+@app.route('/api/test', methods=['GET'])
+def test_endpoint():
+    return jsonify({
+        'success': True,
+        'message': 'Backend is working',
+        'timestamp': datetime.utcnow().isoformat()
+    })
+
 if __name__ == '__main__':
     app.run(
         host='0.0.0.0', 
-        port=int(os.getenv('BACKEND_PORT', 5000)), 
+        port=int(os.getenv('BACKEND_PORT', 5001)),
         debug=True,
         use_reloader=False
     )

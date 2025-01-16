@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import TranslatedText from './TranslatedText';
+import { fetchTeams } from '../services/dataService';
+import { retry } from '../utils/retry';
 
 function TeamPlayerSelector({ onSelect, followedTeams = [], followedPlayers = [] }) {
   const [teams, setTeams] = useState([]);
@@ -12,37 +14,8 @@ function TeamPlayerSelector({ onSelect, followedTeams = [], followedPlayers = []
   const [error, setError] = useState(null);
   const [rosterLoading, setRosterLoading] = useState(false);
 
-  // Fetch teams on mount
-  useEffect(() => {
-    const fetchTeams = async () => {
-      try {
-        console.log('Fetching teams...');
-        setLoading(true);
-        setError(null);
-        const response = await axios.get('https://statsapi.mlb.com/api/v1/teams?sportId=1');
-        console.log('Teams response:', response.data);
-        
-        if (response.data && response.data.teams) {
-          const sortedTeams = response.data.teams.sort((a, b) => a.name.localeCompare(b.name));
-          setTeams(sortedTeams);
-          console.log('Sorted teams:', sortedTeams);
-        } else {
-          throw new Error('Invalid response format');
-        }
-      } catch (error) {
-        console.error('Error fetching teams:', error);
-        setError(error.message || 'Failed to fetch teams');
-        setTeams([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTeams();
-  }, []);
-
-  // Fetch roster for a specific team
-  const fetchRoster = async (teamId) => {
+  // Move fetchRoster into useCallback
+  const fetchRoster = useCallback(async (teamId) => {
     if (!teamId || rostersByTeam[teamId]) return;
     
     setRosterLoading(true);
@@ -68,14 +41,60 @@ function TeamPlayerSelector({ onSelect, followedTeams = [], followedPlayers = []
     } finally {
       setRosterLoading(false);
     }
-  };
+  }, [rostersByTeam]); // Add rostersByTeam as dependency
+
+  // Fetch teams on mount
+  useEffect(() => {
+    const fetchTeams = async () => {
+      try {
+        console.log('Fetching teams...');
+        setLoading(true);
+        setError(null);
+        
+        // Add retry logic
+        const teams = await retry(
+          async () => {
+            const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/mlb/teams`, {
+              timeout: 15000,
+              headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+              }
+            });
+            
+            if (!response.data?.teams) throw new Error('Invalid response format');
+            return response.data.teams;
+          },
+          {
+            retries: 3,
+            delay: 1000,
+            onRetry: (error, attempt) => {
+              console.log(`Retry attempt ${attempt} due to:`, error);
+            }
+          }
+        );
+
+        const sortedTeams = teams.sort((a, b) => a.name.localeCompare(b.name));
+        setTeams(sortedTeams);
+        
+      } catch (error) {
+        console.error('Error fetching teams:', error);
+        setError(error.message || 'Failed to fetch teams');
+        setTeams([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTeams();
+  }, []);
 
   // Fetch roster when team filter changes
   useEffect(() => {
     if (selectedTeamFilter) {
       fetchRoster(selectedTeamFilter);
     }
-  }, [selectedTeamFilter]);
+  }, [selectedTeamFilter, fetchRoster]); // fetchRoster is now stable
 
   // Get current filtered and searched players
   const getCurrentPlayers = () => {
@@ -86,19 +105,9 @@ function TeamPlayerSelector({ onSelect, followedTeams = [], followedPlayers = []
     );
   };
 
-  // Get player data for a followed player
-  const getPlayerData = (playerId) => {
-    for (const teamRoster of Object.values(rostersByTeam)) {
-      const player = teamRoster?.find(p => p.person.id === playerId);
-      if (player) return player;
-    }
-    return null;
-  };
-
   // Pre-fetch rosters for followed players' teams
   useEffect(() => {
     const fetchFollowedPlayersRosters = async () => {
-      // Get unique team IDs from followed players that we don't have rosters for yet
       const teamIds = new Set(followedTeams.map(team => team.id));
       const promises = Array.from(teamIds)
         .filter(teamId => !rostersByTeam[teamId])
@@ -108,7 +117,7 @@ function TeamPlayerSelector({ onSelect, followedTeams = [], followedPlayers = []
     };
 
     fetchFollowedPlayersRosters();
-  }, [followedTeams]);
+  }, [followedTeams, fetchRoster, rostersByTeam]); // fetchRoster is now stable
 
   const handleSelection = ({ team, player }) => {
     console.log('Selected team:', team);  // Debug log
