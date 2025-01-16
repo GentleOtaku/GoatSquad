@@ -11,13 +11,27 @@ from auth import AuthService, token_required, db, init_admin
 import grpc
 from routes.mlb import mlb
 from flask_migrate import Migrate
+from google.cloud.sql.connector import Connector
+import sqlalchemy
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+def init_connection_pool():
+    """Initialize database connection"""
+    db_user = os.getenv("DB_USER")
+    db_pass = os.getenv("DB_PASS")
+    db_name = os.getenv("DB_NAME")
+    
+    # Connect through Cloud SQL Proxy
+    DATABASE_URL = f"postgresql://{db_user}:{db_pass}@localhost:5432/{db_name}"
+    return DATABASE_URL
+
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
+
+# Configure database connection
+app.config['SQLALCHEMY_DATABASE_URI'] = init_connection_pool()
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize extensions
@@ -27,12 +41,13 @@ migrate = Migrate(app, db)
 # Create tables and initialize admin user
 with app.app_context():
     try:
-        # Create all tables
+        # Create tables only if they don't exist
         db.create_all()
         # Initialize admin user
         init_admin()
     except Exception as e:
         logger.error(f"Database initialization error: {str(e)}")
+        db.session.rollback()
 
 # Update CORS configuration
 CORS(app, resources={
@@ -282,7 +297,7 @@ class UserProfile(Resource):
             if not current_user:
                 return {'success': False, 'message': 'User not found'}, 404
                 
-            logger.info(f"Profile fetch for user ID: {current_user.id}")
+            logger.info(f"Profile fetch for user ID: {current_user.client_id}")
             return {'success': True, 'user': current_user.to_dict()}, 200
             
         except Exception as e:
@@ -297,8 +312,8 @@ class UserProfile(Resource):
                 return {'success': False, 'message': 'User not found'}, 404
                 
             data = request.get_json()
-            logger.info(f"Profile update for user ID: {current_user.id}")
-            return AuthService.update_user_profile(current_user.id, data)
+            logger.info(f"Profile update for user ID: {current_user.client_id}")
+            return AuthService.update_user_profile(current_user.client_id, data)
         except Exception as e:
             logger.error(f"Profile update error: {str(e)}", exc_info=True)
             return {'success': False, 'message': str(e)}, 500
