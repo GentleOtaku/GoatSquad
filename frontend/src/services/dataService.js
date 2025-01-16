@@ -99,7 +99,7 @@ export const dataService = {
     try {
       console.log('Fetching teams through backend proxy...');
       const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/mlb/teams`, {
-        timeout: 5000,
+        timeout: 15000,
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json'
@@ -115,13 +115,11 @@ export const dataService = {
       return response.data.teams;
     } catch (error) {
       console.error('Error fetching teams:', error);
-      if (error.code === 'ERR_NETWORK') {
-        console.error('Network error - check if the backend server is running on port 5001');
-        throw new Error('Cannot connect to server. Please check if the backend is running.');
+      if (error.code === 'ECONNABORTED') {
+        throw new Error('Request timed out. Please check your internet connection and try again.');
       }
-      if (error.response) {
-        console.error('Server error:', error.response.data);
-        throw new Error(error.response.data.message || 'Failed to fetch teams');
+      if (error.response?.status === 504) {
+        throw new Error('Server request timed out. Please try again.');
       }
       throw error;
     }

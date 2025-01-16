@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import TranslatedText from './TranslatedText';
 import { fetchTeams } from '../services/dataService';
+import { retry } from '../utils/retry';
 
 function TeamPlayerSelector({ onSelect, followedTeams = [], followedPlayers = [] }) {
   const [teams, setTeams] = useState([]);
@@ -50,35 +51,35 @@ function TeamPlayerSelector({ onSelect, followedTeams = [], followedPlayers = []
         setLoading(true);
         setError(null);
         
-        const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/mlb/teams`, {
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
+        // Add retry logic
+        const teams = await retry(
+          async () => {
+            const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/mlb/teams`, {
+              timeout: 15000,
+              headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+              }
+            });
+            
+            if (!response.data?.teams) throw new Error('Invalid response format');
+            return response.data.teams;
+          },
+          {
+            retries: 3,
+            delay: 1000,
+            onRetry: (error, attempt) => {
+              console.log(`Retry attempt ${attempt} due to:`, error);
+            }
           }
-        });
+        );
+
+        const sortedTeams = teams.sort((a, b) => a.name.localeCompare(b.name));
+        setTeams(sortedTeams);
         
-        console.log('Raw response:', response);
-        
-        if (response.data && Array.isArray(response.data.teams)) {
-          const sortedTeams = response.data.teams.sort((a, b) => a.name.localeCompare(b.name));
-          setTeams(sortedTeams);
-          console.log('Sorted teams:', sortedTeams);
-        } else {
-          console.error('Invalid response format:', response.data);
-          throw new Error('Invalid response format from server');
-        }
       } catch (error) {
         console.error('Error fetching teams:', error);
-        if (error.response) {
-          console.error('Error response:', error.response.data);
-          setError(error.response.data.message || 'Failed to fetch teams');
-        } else if (error.request) {
-          console.error('No response received');
-          setError('No response received from server');
-        } else {
-          console.error('Request setup error:', error.message);
-          setError(error.message);
-        }
+        setError(error.message || 'Failed to fetch teams');
         setTeams([]);
       } finally {
         setLoading(false);
