@@ -6,6 +6,7 @@ import os
 from werkzeug.security import generate_password_hash, check_password_hash
 import logging
 from flask_sqlalchemy import SQLAlchemy
+import random
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -14,36 +15,42 @@ logger = logging.getLogger(__name__)
 db = SQLAlchemy()
 
 class User(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
+    __tablename__ = 'client_info'  # Your existing table name
+    
+    client_id = db.Column(db.Integer, primary_key=True)  # Simple primary key
+    password = db.Column(db.String(256), nullable=False)
+    favorite_team = db.Column(db.String(100))
+    favorite_player = db.Column(db.String(100))
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(256), nullable=False)
-    firstName = db.Column(db.String(80), nullable=False)
-    lastName = db.Column(db.String(80), nullable=False)
+    first_name = db.Column(db.String(80), nullable=False)
+    last_name = db.Column(db.String(80), nullable=False)
     username = db.Column(db.String(80), unique=True, nullable=False)
     timezone = db.Column(db.String(50), default='UTC')
-    avatarUrl = db.Column(db.String(200), default='/images/default-avatar.jpg')
-    createdAt = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    updatedAt = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), 
-                         onupdate=lambda: datetime.now(timezone.utc))
-    followed_teams = db.Column(db.JSON, default=list)
-    followed_players = db.Column(db.JSON, default=list)
+    avatarurl = db.Column(db.String(200))
 
     def to_dict(self):
         return {
-            'id': self.id,
+            'id': self.client_id,
             'email': self.email,
-            'firstName': self.firstName,
-            'lastName': self.lastName,
+            'firstName': self.first_name,
+            'lastName': self.last_name,
             'username': self.username,
             'timezone': self.timezone,
-            'avatarUrl': self.avatarUrl,
-            'createdAt': self.createdAt.isoformat(),
-            'updatedAt': self.updatedAt.isoformat(),
+            'avatarUrl': self.avatarurl,
             'preferences': {
-                'teams': self.followed_teams or [],
-                'players': self.followed_players or []
+                'teams': [self.favorite_team] if self.favorite_team else [],
+                'players': [self.favorite_player] if self.favorite_player else []
             }
         }
+
+    @staticmethod
+    def generate_unique_id():
+        """Generate a unique client ID between 1 and 1,000,000"""
+        while True:
+            new_id = random.randint(1, 1_000_000)
+            # Check if this ID already exists
+            if not User.query.filter_by(client_id=new_id).first():
+                return new_id
 
 # Get secret key from environment variable or use a default for development
 SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'your-secret-key-here')
@@ -68,7 +75,7 @@ def token_required(f):
 
         try:
             data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-            current_user = User.query.get(data['user_id'])
+            current_user = User.query.filter_by(client_id=data['user_id']).first()
             
             if current_user is None:
                 logger.error(f"User not found for token user_id: {data.get('user_id')}")
@@ -89,52 +96,37 @@ class AuthService:
         try:
             logger.info("Starting user registration")
             
-            if not data:
-                logger.error("No data provided for registration")
-                return {'success': False, 'message': 'No registration data provided'}, 400
-
-            required_fields = ['email', 'password', 'firstName', 'lastName', 'username']
-            missing_fields = [field for field in required_fields if not data.get(field)]
-            
-            if missing_fields:
-                logger.error(f"Missing required fields: {missing_fields}")
-                return {
-                    'success': False, 
-                    'message': f'Missing required fields: {", ".join(missing_fields)}'
-                }, 400
-
             # Check if email already exists
             if User.query.filter_by(email=data['email']).first():
-                logger.warning(f"Email already registered: {data['email']}")
                 return {'success': False, 'message': 'Email already registered'}, 409
 
             # Check if username already exists
             if User.query.filter_by(username=data['username']).first():
-                logger.warning(f"Username already taken: {data['username']}")
                 return {'success': False, 'message': 'Username already taken'}, 409
 
             new_user = User(
+                client_id=User.generate_unique_id(),  # Generate unique ID
                 email=data['email'],
-                password_hash=generate_password_hash(data['password']),
-                firstName=data['firstName'],
-                lastName=data['lastName'],
+                password=generate_password_hash(data['password']),
+                first_name=data['firstName'],
+                last_name=data['lastName'],
                 username=data['username'],
                 timezone=data.get('timezone', 'UTC'),
-                avatarUrl=data.get('avatarUrl', '/images/default-avatar.jpg')
+                avatarurl=data.get('avatarUrl', '/images/default-avatar.jpg'),
+                favorite_team=data.get('favorite_team'),
+                favorite_player=data.get('favorite_player')
             )
 
             db.session.add(new_user)
             db.session.commit()
 
-            logger.info(f"User registered successfully: {new_user.email}")
-
             token = jwt.encode({
-                'user_id': new_user.id,
+                'user_id': new_user.client_id,
                 'exp': datetime.now(timezone.utc) + timedelta(days=1)
             }, SECRET_KEY, algorithm="HS256")
 
             return {
-                'success': True, 
+                'success': True,
                 'message': 'Registration successful',
                 'user': new_user.to_dict(),
                 'token': token
@@ -144,8 +136,8 @@ class AuthService:
             db.session.rollback()
             logger.error(f"Registration error: {str(e)}", exc_info=True)
             return {
-                'success': False, 
-                'message': 'An error occurred during registration. Please try again.'
+                'success': False,
+                'message': 'An error occurred during registration.'
             }, 500
 
     @staticmethod
@@ -164,12 +156,12 @@ class AuthService:
                 logger.warning(f"No user found with email: {email}")
                 return {'success': False, 'message': 'Invalid email or password'}, 401
 
-            if not check_password_hash(user.password_hash, password):
+            if not check_password_hash(user.password, password):
                 logger.warning(f"Invalid password for user: {email}")
                 return {'success': False, 'message': 'Invalid email or password'}, 401
 
             token = jwt.encode({
-                'user_id': user.id,
+                'user_id': user.client_id,
                 'exp': datetime.now(timezone.utc) + timedelta(days=1)
             }, SECRET_KEY, algorithm="HS256")
 
