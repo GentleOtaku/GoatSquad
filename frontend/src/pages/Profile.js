@@ -4,7 +4,7 @@ import { userService } from '../services/userService';
 import PageTransition from '../components/PageTransition';
 
 function Profile() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',

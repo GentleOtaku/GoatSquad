@@ -1,21 +1,25 @@
 import React, { useState, useEffect } from 'react';
+import { translationService } from '../services/translationService';
 import { useLanguage } from '../contexts/LanguageContext';
 
-const TranslatedText = ({ text }) => {
-  const { language, t } = useLanguage();
+function TranslatedText({ text, ...props }) {
   const [translatedText, setTranslatedText] = useState(text);
+  const { language } = useLanguage();
 
   useEffect(() => {
-    const translate = async () => {
-      console.log('Translating text:', text, 'to language:', language);
-      const result = await t(text);
-      console.log('Translation result:', result);
-      setTranslatedText(result);
+    const translateText = async () => {
+      if (language !== 'en') {
+        const translated = await translationService.translate(text, language);
+        setTranslatedText(translated);
+      } else {
+        setTranslatedText(text);
+      }
     };
-    translate();
-  }, [text, t, language]);
 
-  return <>{translatedText}</>;
-};
+    translateText();
+  }, [text, language]);
+
+  return <span {...props}>{translatedText}</span>;
+}
 
 export default TranslatedText; 

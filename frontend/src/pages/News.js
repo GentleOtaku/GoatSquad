@@ -2,7 +2,6 @@ import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import NewsDigest from '../components/NewsDigest';
 import { usePreferences } from '../hooks/usePreferences';
-import TranslatedText from '../components/TranslatedText';
 import PageTransition from '../components/PageTransition';
 
 function News() {

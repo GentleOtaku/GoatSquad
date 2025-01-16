@@ -1,3 +1,5 @@
+import axios from 'axios';
+
 // Initialize users in localStorage if not exists
 if (!localStorage.getItem('users')) {
   const defaultUsers = [
@@ -92,4 +94,39 @@ export const dataService = {
       throw new Error('Failed to verify credentials');
     }
   },
-}; 
+
+  fetchTeams: async () => {
+    try {
+      console.log('Fetching teams through backend proxy...');
+      const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/mlb/teams`, {
+        timeout: 5000,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.data || !response.data.teams) {
+        console.error('Invalid response format:', response.data);
+        throw new Error('Invalid response format from server');
+      }
+      
+      console.log(`Successfully fetched ${response.data.teams.length} teams`);
+      return response.data.teams;
+    } catch (error) {
+      console.error('Error fetching teams:', error);
+      if (error.code === 'ERR_NETWORK') {
+        console.error('Network error - check if the backend server is running on port 5001');
+        throw new Error('Cannot connect to server. Please check if the backend is running.');
+      }
+      if (error.response) {
+        console.error('Server error:', error.response.data);
+        throw new Error(error.response.data.message || 'Failed to fetch teams');
+      }
+      throw error;
+    }
+  }
+};
+
+// Add this line to export fetchTeams directly
+export const fetchTeams = dataService.fetchTeams; 
