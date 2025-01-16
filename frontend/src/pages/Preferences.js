@@ -5,33 +5,15 @@ import TeamPlayerSelector from '../components/TeamPlayerSelector';
 import { usePreferences } from '../hooks/usePreferences';
 import TranslatedText from '../components/TranslatedText';
 import PageTransition from '../components/PageTransition';
+import { fetchTeams } from '../services/dataService';
 
 function Preferences() {
   const navigate = useNavigate();
   const { preferences, followTeam, unfollowTeam, followPlayer, unfollowPlayer } = usePreferences();
   const [isSaving, setIsSaving] = useState(false);
-  const [allTeams, setAllTeams] = useState([]);
   const [playerData, setPlayerData] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-
-  // Fetch all teams on mount to ensure we have team data
-  useEffect(() => {
-    const fetchTeams = async () => {
-      try {
-        setLoading(true);
-        const response = await axios.get('https://statsapi.mlb.com/api/v1/teams?sportId=1');
-        setAllTeams(response.data.teams);
-        setLoading(false);
-      } catch (error) {
-        console.error('Error fetching teams:', error);
-        setError(error.message);
-        setLoading(false);
-      }
-    };
-
-    fetchTeams();
-  }, []);
 
   // Fetch player data for followed players
   useEffect(() => {
@@ -56,7 +38,25 @@ function Preferences() {
     };
 
     fetchPlayerData();
-  }, [preferences?.players]);
+  }, [preferences?.players, playerData]);
+
+  useEffect(() => {
+    const loadTeams = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const teams = await fetchTeams();
+        console.log('Teams loaded:', teams);
+      } catch (err) {
+        setError(err.message);
+        console.error('Failed to load teams:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTeams();
+  }, []);
 
   const handleSelection = ({ team, player }) => {
     if (team) {
@@ -92,6 +92,14 @@ function Preferences() {
       navigate('/news');
     }, 500);
   };
+
+  if (error) {
+    return (
+      <div className="text-red-500 p-4">
+        Error: {error}
+      </div>
+    );
+  }
 
   return (
     <PageTransition>

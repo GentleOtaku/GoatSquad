@@ -42,6 +42,12 @@ function Login() {
     }
   };
 
+  const handleForgotPassword = (e) => {
+    e.preventDefault();
+    // Implement forgot password functionality or show a message
+    alert('Forgot password functionality coming soon!');
+  };
+
   return (
     <PageTransition>
       <div className={`min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
@@ -139,11 +145,13 @@ function Login() {
                   </label>
                 </div>
 
-                <div className="text-sm">
-                  <a href="#" className="font-medium text-indigo-500 hover:text-indigo-400">
-                    Forgot password?
-                  </a>
-                </div>
+                <button 
+                  onClick={handleForgotPassword}
+                  className="text-blue-600 hover:text-blue-800 underline"
+                  type="button"
+                >
+                  Forgot password?
+                </button>
               </div>
 
               <div>
