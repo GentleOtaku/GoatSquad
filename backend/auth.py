@@ -19,8 +19,8 @@ class User(db.Model):
     
     client_id = db.Column(db.Integer, primary_key=True)  # Simple primary key
     password = db.Column(db.String(256), nullable=False)
-    favorite_team = db.Column(db.String(100))
-    favorite_player = db.Column(db.String(100))
+    followed_teams = db.Column(db.JSON, default=list)  # Changed from favorite_team
+    followed_players = db.Column(db.JSON, default=list)  # Changed from favorite_player
     email = db.Column(db.String(120), unique=True, nullable=False)
     first_name = db.Column(db.String(80), nullable=False)
     last_name = db.Column(db.String(80), nullable=False)
@@ -38,8 +38,8 @@ class User(db.Model):
             'timezone': self.timezone,
             'avatarUrl': self.avatarurl,
             'preferences': {
-                'teams': [self.favorite_team] if self.favorite_team else [],
-                'players': [self.favorite_player] if self.favorite_player else []
+                'teams': self.followed_teams or [],  # Changed from favorite_team
+                'players': self.followed_players or []  # Changed from favorite_player
             }
         }
 
@@ -113,8 +113,8 @@ class AuthService:
                 username=data['username'],
                 timezone=data.get('timezone', 'UTC'),
                 avatarurl=data.get('avatarUrl', '/images/default-avatar.jpg'),
-                favorite_team=data.get('favorite_team'),
-                favorite_player=data.get('favorite_player')
+                followed_teams=data.get('teams', []),  # Changed from favorite_team
+                followed_players=data.get('players', [])  # Changed from favorite_player
             )
 
             db.session.add(new_user)
