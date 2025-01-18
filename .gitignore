@@ -9,6 +9,7 @@ users.db
 # C extensions
 *.so
 
+codebase.md
 # Distribution / packaging
 .Python
 build/
