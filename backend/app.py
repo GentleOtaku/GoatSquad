@@ -28,8 +28,8 @@ def init_connection_pool():
     db_name = os.getenv("DB_NAME")
     
     # Connect through Cloud SQL Proxy
-    #DATABASE_URL = f"postgresql://{db_user}:{db_pass}@34.71.48.54:5432/{db_name}"
-    return "postgresql+psycopg2://postgres:vibhas69@34.71.48.54:5432/user_ratings_db"
+    DATABASE_URL = f"postgresql://{db_user}:{db_pass}@34.71.48.54:5432/{db_name}"
+    return DATABASE_URL
 
 app = Flask(__name__)
 
@@ -220,6 +220,53 @@ def predict_recommendations():
         logger.error(f"Error predicting recommendations: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'message': str(e)}), 500
     
+auth_ns = api.namespace('auth', description='Authentication operations')
+
+# Initialize the translation client
+translate_client = translate.Client()
+
+@app.route('/api/translate', methods=['POST'])
+def translate_text():
+    try:
+        data = request.get_json()
+        text = data.get('text')
+        target_language = data.get('target_language', 'en')
+
+        if not text:
+            return jsonify({
+                'success': False,
+                'message': 'No text provided for translation'
+            }), 400
+
+        # Perform translation
+        result = translate_client.translate(
+            text,
+            target_language=target_language
+        )
+
+        return jsonify({
+            'success': True,
+            'translatedText': result['translatedText'],
+            'sourceLanguage': result['detectedSourceLanguage']
+        })
+
+    except Exception as e:
+        logger.error(f"Translation error: {str(e)}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': 'Translation failed',
+            'error': str(e)
+        }), 500
+
+@app.errorhandler(Exception)
+def handle_error(error):
+    logger.error(f"Unhandled error: {str(error)}", exc_info=True)
+    message = str(error)
+    status_code = 500
+    if hasattr(error, 'code'):
+        status_code = error.code
+    return jsonify({'success': False, 'message': message}), status_code
+
 auth_ns = api.namespace('auth', description='Authentication operations')
 
 @auth_ns.route('/register')
@@ -419,7 +466,7 @@ def test_endpoint():
 if __name__ == '__main__':
     app.run(
         host='0.0.0.0', 
-        port=int(os.getenv('BACKEND_PORT', 5001)),
+        port=int(os.getenv('BACKEND_PORT', 5000)),
         debug=True,
         use_reloader=False
     )
