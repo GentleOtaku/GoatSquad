@@ -41,8 +41,8 @@ def recommend_reels(user_id, model_knn, user_reel_matrix, num_recommendations=5)
     for reel_id, score in recommended_reels:
         print(f"Reel ID: {reel_id}, Predicted Score: {score}")
 
-def run_main(user_id=10, num_recommendations=3, model_path='knn_model_sql.pkl'):
-    ratings = load_data()
+def run_main(table, user_id=10, num_recommendations=3, model_path='knn_model_sql.pkl'):
+    ratings = load_data(table)
     if ratings is None:
         return
     user_reel_matrix = ratings.pivot_table(index='user_id', columns='reel_id', values='rating', fill_value=0)
@@ -53,4 +53,4 @@ def run_main(user_id=10, num_recommendations=3, model_path='knn_model_sql.pkl'):
 
     recommend_reels(user_id, model_knn, user_reel_matrix_loaded, num_recommendations)
 
-run_main()
+#run_main(table)
