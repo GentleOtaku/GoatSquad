@@ -38,8 +38,11 @@ def recommend_reels(user_id, model_knn, user_reel_matrix, num_recommendations=5)
 
     recommended_reels = sorted(reel_scores.items(), key=lambda x: x[1], reverse=True)[:num_recommendations]
     print(f"Top {num_recommendations} reel recommendations for User {user_id}:")
+    
     for reel_id, score in recommended_reels:
         print(f"Reel ID: {reel_id}, Predicted Score: {score}")
+    
+    return [{"reel_id": reel_id, "predicted_score": score} for reel_id, score in recommended_reels]
 
 def run_main(table, user_id=10, num_recommendations=3, model_path='knn_model_sql.pkl'):
     ratings = load_data(table)
@@ -51,6 +54,7 @@ def run_main(table, user_id=10, num_recommendations=3, model_path='knn_model_sql
     if model_knn is None:
         model_knn, user_reel_matrix_loaded = build_and_save_model(user_reel_matrix, model_path)
 
-    recommend_reels(user_id, model_knn, user_reel_matrix_loaded, num_recommendations)
+    recommendations = recommend_reels(user_id, model_knn, user_reel_matrix_loaded, num_recommendations)
+    return recommendations
 
 #run_main(table)
