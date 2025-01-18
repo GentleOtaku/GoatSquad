@@ -28,3 +28,8 @@ Jinja2==2.11.3
 # Testing
 pytest==7.4.0
 pytest-cov==4.1.0
+
+#ML configs
+scikit-learn
+pandas
+numpy

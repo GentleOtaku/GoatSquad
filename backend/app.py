@@ -28,8 +28,8 @@ def init_connection_pool():
     db_name = os.getenv("DB_NAME")
     
     # Connect through Cloud SQL Proxy
-    DATABASE_URL = f"postgresql://{db_user}:{db_pass}@34.71.48.54:5432/{db_name}"
-    return DATABASE_URL
+    #DATABASE_URL = f"postgresql://{db_user}:{db_pass}@34.71.48.54:5432/{db_name}"
+    return "postgresql+psycopg2://postgres:vibhas69@34.71.48.54:5432/user_ratings_db"
 
 app = Flask(__name__)
 
@@ -181,10 +181,10 @@ def add_rating():
     """Add a user reel rating"""
     try:
         data = request.get_json()
-        user_id, reel_id, rating = data.get('user_id'), data.get('reel_id'), data.get('rating')
+        user_id, reel_id, rating, table = data.get('user_id'), data.get('reel_id'), data.get('rating'), data.get('table')
         if not all([user_id, reel_id, rating]):
             return jsonify({'success': False, 'message': 'Missing required fields'}), 400
-        add(user_id, reel_id, rating)
+        add(user_id, reel_id, rating, table)
         return jsonify({'success': True, 'message': 'Rating added successfully'}), 200
     except Exception as e:
         logger.error(f"Error adding rating: {str(e)}", exc_info=True)
@@ -195,10 +195,10 @@ def remove_rating():
     """Remove a user reel rating"""
     try:
         data = request.get_json()
-        user_id, reel_id = data.get('user_id'), data.get('reel_id')
+        user_id, reel_id, table = data.get('user_id'), data.get('reel_id'), data.get('table')
         if not all([user_id, reel_id]):
             return jsonify({'success': False, 'message': 'Missing required fields'}), 400
-        remove(user_id, reel_id)
+        remove(user_id, reel_id, table)
         return jsonify({'success': True, 'message': 'Rating removed successfully'}), 200
     except Exception as e:
         logger.error(f"Error removing rating: {str(e)}", exc_info=True)
@@ -208,59 +208,18 @@ def remove_rating():
 def predict_recommendations():
     """Get reel recommendations for a user"""
     try:
-        id = request.args.get('user_id', type=int)
-        recommendations = request.args.get('num_recommendations', 5, type=int)
-        run_main(user_id = id, num_recommendations= recommendations, model_path='knn_model_sql.pkl')
+        id = int(request.args.get('user_id', default=0))  
+        recommendations = int(request.args.get('num_recommendations', default=5))  
+        table = request.args.get('table', default='user_ratings_db')  
+
+        # Run the model
+        run_main(table, user_id = id, num_recommendations= recommendations, model_path='knn_model_sql.pkl')
+
         return jsonify({'success': True, 'recommendations': recommendations}), 200
     except Exception as e:
         logger.error(f"Error predicting recommendations: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'message': str(e)}), 500
     
-# Initialize the translation client
-translate_client = translate.Client()
-
-@app.route('/api/translate', methods=['POST'])
-def translate_text():
-    try:
-        data = request.get_json()
-        text = data.get('text')
-        target_language = data.get('target_language', 'en')
-
-        if not text:
-            return jsonify({
-                'success': False,
-                'message': 'No text provided for translation'
-            }), 400
-
-        # Perform translation
-        result = translate_client.translate(
-            text,
-            target_language=target_language
-        )
-
-        return jsonify({
-            'success': True,
-            'translatedText': result['translatedText'],
-            'sourceLanguage': result['detectedSourceLanguage']
-        })
-
-    except Exception as e:
-        logger.error(f"Translation error: {str(e)}", exc_info=True)
-        return jsonify({
-            'success': False,
-            'message': 'Translation failed',
-            'error': str(e)
-        }), 500
-
-@app.errorhandler(Exception)
-def handle_error(error):
-    logger.error(f"Unhandled error: {str(error)}", exc_info=True)
-    message = str(error)
-    status_code = 500
-    if hasattr(error, 'code'):
-        status_code = error.code
-    return jsonify({'success': False, 'message': message}), status_code
-
 auth_ns = api.namespace('auth', description='Authentication operations')
 
 @auth_ns.route('/register')
@@ -460,7 +419,7 @@ def test_endpoint():
 if __name__ == '__main__':
     app.run(
         host='0.0.0.0', 
-        port=int(os.getenv('BACKEND_PORT', 5000)),
+        port=int(os.getenv('BACKEND_PORT', 5001)),
         debug=True,
         use_reloader=False
     )
