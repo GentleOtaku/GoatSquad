@@ -7,6 +7,8 @@ import os
 from sqlalchemy import create_engine
 from db import load_data
 
+print("8. CFKNN.py imported, directory:", os.getcwd())
+
 def build_and_save_model(user_reel_matrix, model_path='knn_model.pkl'):
     user_reel_matrix = user_reel_matrix.astype(float)
     user_reel_matrix_sparse = csr_matrix(user_reel_matrix.values)  
@@ -17,12 +19,14 @@ def build_and_save_model(user_reel_matrix, model_path='knn_model.pkl'):
     return model_knn, user_reel_matrix
 
 def load_model(model_path='knn_model_sql.pkl'):
-    if os.path.exists(model_path):
-        print(f"Loading model from {model_path}...")
-        model_knn, user_reel_matrix = joblib.load(model_path)
+    # Convert relative path to absolute path
+    abs_model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), model_path)
+    if os.path.exists(abs_model_path):
+        print(f"Loading model from {abs_model_path}...")
+        model_knn, user_reel_matrix = joblib.load(abs_model_path)
         return model_knn, user_reel_matrix
     else:
-        print(f"Model not found at {model_path}. Please train the model first.")
+        print(f"Model not found at {abs_model_path}. Please train the model first.")
         return None, None
 
 def recommend_reels(user_id, model_knn, user_reel_matrix, num_recommendations=5):

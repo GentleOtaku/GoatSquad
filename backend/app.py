@@ -21,6 +21,10 @@ from db import load_data, add, remove
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+print("1. App.py starting directory:", os.getcwd())
+
+ORIGINAL_DIR = os.path.dirname(os.path.abspath(__file__))
+
 def init_connection_pool():
     """Initialize database connection"""
     db_user = os.getenv("DB_USER")
@@ -31,8 +35,14 @@ def init_connection_pool():
     DATABASE_URL = f"postgresql://{db_user}:{db_pass}@34.71.48.54:5432/{db_name}"
     return DATABASE_URL
 
-
 app = Flask(__name__)
+
+# Add the before_request handler AFTER app creation
+@app.before_request
+def before_request():
+    os.chdir(ORIGINAL_DIR)
+
+print("2. Before Flask app creation:", os.getcwd())
 
 # Configure database connection
 app.config['SQLALCHEMY_DATABASE_URI'] = init_connection_pool()
@@ -41,6 +51,10 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize extensions
 db.init_app(app)
+print("11. Before Flask app creation:", os.getcwd())
+current_dir = os.getcwd()
+print("11. Before Flask app creation:", os.getcwd())
+print(current_dir)
 migrate = Migrate(app, db)
 
 # Create tables and initialize admin user
@@ -469,6 +483,34 @@ def test_endpoint():
         'message': 'Backend is working',
         'timestamp': datetime.utcnow().isoformat()
     })
+
+@app.route('/api/perform-action', methods=['POST'])
+def perform_action():
+    try:
+        # Call the recommendation system with default values
+        user_id = 10  # Default user_id
+        num_recommendations = 5  # Default number of recommendations
+        table = 'user_ratings_db'  # Default table
+        
+        # Run the model
+        recommendations = run_main(table, user_id=user_id, num_recommendations=num_recommendations, model_path='knn_model_sql.pkl')
+        
+        return jsonify({
+            'success': True,
+            'message': 'Recommendations generated successfully!',
+            'data': {
+                'timestamp': datetime.utcnow().isoformat(),
+                'recommendations': recommendations,
+                'user_id': user_id,
+                'num_recommendations': num_recommendations
+            }
+        })
+    except Exception as e:
+        logger.error(f"Recommendation error: {str(e)}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
 
 if __name__ == '__main__':
     app.run(

@@ -4,6 +4,7 @@ import TranslatedText from './TranslatedText';
 import LanguageSelector from './LanguageSelector';
 import { useDarkMode } from '../hooks/useDarkMode';
 import { useAuth } from '../contexts/AuthContext';
+import axios from 'axios';
 
 function Navbar() {
   const { isDarkMode, toggleDarkMode } = useDarkMode();
@@ -44,6 +45,22 @@ function Navbar() {
     setIsProfileMenuOpen(false);
   };
 
+  const handleLinkClick = async (e) => {
+    e.preventDefault();
+    try {
+        const response = await fetch('http://localhost:5000/recommend/predict?user_id=10&num_recommendations=5&table=user_ratings_db', {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json'
+            }
+        });
+        const data = await response.json();
+        console.log('API Response:', data);
+    } catch (error) {
+        console.error('Failed:', error);
+    }
+  };
+
   return (
     <nav className="bg-white dark:bg-gray-800 shadow">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -68,6 +85,13 @@ function Navbar() {
                   <TranslatedText text={item.label} />
                 </Link>
               ))}
+              <a
+                href="#"
+                onClick={handleLinkClick}
+                className="inline-flex items-center px-1 pt-1 text-sm font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+              >
+                Get Recommendations
+              </a>
             </div>
           </div>
           <div className="flex items-center space-x-4">
