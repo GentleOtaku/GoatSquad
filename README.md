@@ -50,7 +50,7 @@ A personalized MLB news feed that delivers AI-powered updates about your favorit
 2. Start the frontend:
    ```bash
    cd frontend
-   npm start
+   npm run dev
    ```
 
 

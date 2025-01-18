@@ -232,11 +232,16 @@ def predict_recommendations():
     """Get reel recommendations for a user"""
     try:
         id = int(request.args.get('user_id', default=0))  
-        recommendations = int(request.args.get('num_recommendations', default=5))  
+        num_recs = int(request.args.get('num_recommendations', default=5))  
         table = request.args.get('table', default='user_ratings_db')  
 
         # Run the model
-        run_main(table, user_id = id, num_recommendations= recommendations, model_path='knn_model_sql.pkl')
+        recommendations = run_main(
+            table=table,
+            user_id=id,
+            num_recommendations=num_recs,
+            model_path='knn_model_sql.pkl'
+        )
 
         return jsonify({'success': True, 'recommendations': recommendations}), 200
     except Exception as e:
