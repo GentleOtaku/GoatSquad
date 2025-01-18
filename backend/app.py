@@ -28,7 +28,7 @@ def init_connection_pool():
     db_name = os.getenv("DB_NAME")
     
     # Connect through Cloud SQL Proxy
-    DATABASE_URL = f"postgresql://{db_user}:{db_pass}@localhost:5432/{db_name}"
+    DATABASE_URL = f"postgresql://{db_user}:{db_pass}@34.71.48.54:5432/{db_name}"
     return DATABASE_URL
 
 app = Flask(__name__)
