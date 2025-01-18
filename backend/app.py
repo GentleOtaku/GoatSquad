@@ -31,6 +31,7 @@ def init_connection_pool():
     DATABASE_URL = f"postgresql://{db_user}:{db_pass}@34.71.48.54:5432/{db_name}"
     return DATABASE_URL
 
+
 app = Flask(__name__)
 
 # Configure database connection
@@ -178,12 +179,17 @@ def get_highlights():
 
 @app.route('/recommend/add', methods=['POST'])
 def add_rating():
-    """Add a user reel rating"""
     try:
-        data = request.get_json()
-        user_id, reel_id, rating, table = data.get('user_id'), data.get('reel_id'), data.get('rating'), data.get('table')
+        # Scrape data from query arguments instead of JSON payload
+        user_id = request.args.get('user_id')
+        reel_id = request.args.get('reel_id')
+        rating = request.args.get('rating')
+        table = request.args.get('table', default='user_ratings_db')
+
         if not all([user_id, reel_id, rating]):
             return jsonify({'success': False, 'message': 'Missing required fields'}), 400
+
+        rating = float(rating)
         add(user_id, reel_id, rating, table)
         return jsonify({'success': True, 'message': 'Rating added successfully'}), 200
     except Exception as e:
@@ -194,10 +200,13 @@ def add_rating():
 def remove_rating():
     """Remove a user reel rating"""
     try:
-        data = request.get_json()
-        user_id, reel_id, table = data.get('user_id'), data.get('reel_id'), data.get('table')
+        user_id = request.args.get('user_id')
+        reel_id = request.args.get('reel_id')
+        table = request.args.get('table', default='user_ratings_db')
+
         if not all([user_id, reel_id]):
             return jsonify({'success': False, 'message': 'Missing required fields'}), 400
+
         remove(user_id, reel_id, table)
         return jsonify({'success': True, 'message': 'Rating removed successfully'}), 200
     except Exception as e:
@@ -219,8 +228,6 @@ def predict_recommendations():
     except Exception as e:
         logger.error(f"Error predicting recommendations: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'message': str(e)}), 500
-    
-auth_ns = api.namespace('auth', description='Authentication operations')
 
 # Initialize the translation client
 translate_client = translate.Client()
