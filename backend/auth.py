@@ -14,6 +14,9 @@ logger = logging.getLogger(__name__)
 
 db = SQLAlchemy()
 
+# At the top after imports
+print("10. Auth.py imported, directory:", os.getcwd())
+
 class User(db.Model):
     __tablename__ = 'client_info'  # Your existing table name
     

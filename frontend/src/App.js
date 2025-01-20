@@ -12,6 +12,7 @@ import { LanguageProvider } from './contexts/LanguageContext';
 import Profile from './pages/Profile';
 import Register from './pages/Register';
 import { AnimatePresence } from 'framer-motion';
+import RecommendationsPage from './pages/RecommendationsPage';
 
 // Create a wrapper component that uses useLocation
 function AnimatedRoutes() {
@@ -54,6 +55,13 @@ function AnimatedRoutes() {
           <ProtectedRoute>
             <MainLayout>
               <Profile />
+            </MainLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/recommendations" element={
+          <ProtectedRoute>
+            <MainLayout>
+              <RecommendationsPage />
             </MainLayout>
           </ProtectedRoute>
         } />

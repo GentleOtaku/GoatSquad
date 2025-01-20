@@ -4,6 +4,7 @@ import TranslatedText from './TranslatedText';
 import LanguageSelector from './LanguageSelector';
 import { useDarkMode } from '../hooks/useDarkMode';
 import { useAuth } from '../contexts/AuthContext';
+import axios from 'axios';
 
 function Navbar() {
   const { isDarkMode, toggleDarkMode } = useDarkMode();
@@ -35,7 +36,8 @@ function Navbar() {
     { path: '/', label: 'Home' },
     { path: '/news', label: 'News' },
     { path: '/calendar', label: 'Calendar' },
-    { path: '/preferences', label: 'Preferences' }
+    { path: '/preferences', label: 'Preferences' },
+    { path: '/recommendations', label: 'Recommendations' }
   ];
 
   const handleLogout = () => {
