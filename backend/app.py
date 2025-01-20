@@ -238,7 +238,7 @@ def predict_recommendations():
             table=table,
             user_id=id,
             num_recommendations=num_recs,
-            model_path='knn_model_sql.pkl'
+            model_path='knn_model.pkl'
         )
 
         return jsonify({'success': True, 'recommendations': recommendations}), 200
@@ -496,7 +496,7 @@ def perform_action():
         table = 'user_ratings_db'  # Default table
         
         # Run the model
-        recommendations = run_main(table, user_id=user_id, num_recommendations=num_recommendations, model_path='knn_model_sql.pkl')
+        recommendations = run_main(table, user_id=user_id, num_recommendations=num_recommendations, model_path='knn_model.pkl')
         
         return jsonify({
             'success': True,
