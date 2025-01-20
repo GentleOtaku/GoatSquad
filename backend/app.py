@@ -21,8 +21,6 @@ from db import load_data, add, remove, get_video_url
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-print("1. App.py starting directory:", os.getcwd())
-
 ORIGINAL_DIR = os.path.dirname(os.path.abspath(__file__))
 
 def init_connection_pool():
