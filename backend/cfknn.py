@@ -7,8 +7,6 @@ import os
 from sqlalchemy import create_engine
 from db import load_data
 
-print("8. CFKNN.py imported, directory:", os.getcwd())
-
 def build_and_save_model(user_reel_matrix, model_path='knn_model.pkl'):
     user_reel_matrix = user_reel_matrix.astype(float)
     user_reel_matrix_sparse = csr_matrix(user_reel_matrix.values)  
@@ -18,7 +16,7 @@ def build_and_save_model(user_reel_matrix, model_path='knn_model.pkl'):
     print(f"Model trained and saved to {model_path}")
     return model_knn, user_reel_matrix
 
-def load_model(model_path='knn_model_sql.pkl'):
+def load_model(model_path='knn_model.pkl'):
     # Convert relative path to absolute path
     abs_model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), model_path)
     if os.path.exists(abs_model_path):
@@ -48,7 +46,7 @@ def recommend_reels(user_id, model_knn, user_reel_matrix, num_recommendations=5)
     
     return [{"reel_id": reel_id, "predicted_score": score} for reel_id, score in recommended_reels]
 
-def run_main(table, user_id=10, num_recommendations=3, model_path='knn_model_sql.pkl'):
+def run_main(table, user_id=10, num_recommendations=3, model_path='knn_model.pkl'):
     ratings = load_data(table)
     if ratings is None:
         return
