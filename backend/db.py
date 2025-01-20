@@ -5,8 +5,6 @@ import os
 
 DATABASE_URL = "postgresql+psycopg2://postgres:vibhas69@34.71.48.54:5432/user_ratings_db"
 
-print("6. DB.py imported, directory:", os.getcwd())
-
 def load_data(table):
     print("7. load_data called, directory:", os.getcwd())
     engine = create_engine(DATABASE_URL)
