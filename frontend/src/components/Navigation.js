@@ -43,7 +43,7 @@ function Navigation() {
                                     to="/preferences" 
                                     className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/preferences')}`}
                                 >
-                                    Chicken
+                                    Preferences
                                 </Link>
                                 <Link 
                                     to="/button" 

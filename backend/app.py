@@ -15,7 +15,7 @@ from google.cloud.sql.connector import Connector
 import sqlalchemy
 from werkzeug.middleware.proxy_fix import ProxyFix
 from cfknn import load_model, recommend_reels, build_and_save_model, run_main
-from db import load_data, add, remove
+from db import load_data, add, remove, get_video_url
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -516,6 +516,27 @@ def perform_action():
             'success': False,
             'message': str(e)
         }), 500
+
+@app.route('/api/mlb/video', methods=['GET'])
+def get_video_url_endpoint():  # Renamed to avoid conflict with imported function
+    """Get video URL from database using play ID"""
+    try:
+        play_id = request.args.get('play_id')
+        if not play_id:
+            return jsonify({'success': False, 'message': 'Play ID is required'}), 400
+
+        video_url = get_video_url(play_id)  # Use imported function directly
+        if not video_url:
+            return jsonify({'success': False, 'message': 'Video URL not found'}), 404
+
+        return jsonify({
+            'success': True,
+            'video_url': video_url
+        })
+
+    except Exception as e:
+        logger.error(f"Error fetching video URL: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(

@@ -47,6 +47,35 @@ def remove(user_id, reel_id, table):
     except Exception as e:
         print(f"Failure removing: {e}")
 
+def get_video_url(reel_id):
+    engine = create_engine(DATABASE_URL)
+    # First try to get the specific video
+    query = text("""
+        SELECT url FROM mlb_highlights 
+        WHERE id = :reel_id
+    """)
+    try:
+        with engine.connect() as connection:
+            result = connection.execute(query, {"reel_id": reel_id}).fetchone()
+            if result:
+                return result[0]
+            
+            # If specific video not found, get any available video
+            fallback_query = text("""
+                SELECT url FROM mlb_highlights 
+                LIMIT 1
+            """)
+            fallback_result = connection.execute(fallback_query).fetchone()
+            if fallback_result:
+                print("Using fallback video")
+                return fallback_result[0]
+            
+            print("No videos found in database")
+            return None
+    except Exception as e:
+        print(f"Error fetching video URL: {e}")
+        return None
+
 if __name__ == "__main__":
     # test connecitons 
     load_data()
