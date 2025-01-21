@@ -1,5 +1,74 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import PageTransition from '../components/PageTransition';
+
+// A helper function to simulate new data fetch:
+function generateMockPosts(page = 1) {
+  const baseItems = [
+    {
+      id: 1,
+      type: 'news',
+      title: `Breaking: Big Trade Rumors (Page ${page})`,
+      description: 'Rumors are swirling about a potential blockbuster trade...',
+      fullText: `Multiple sources indicate a major trade on page ${page}.`,
+      upvotes: 10,
+      downvotes: 2,
+      comments: [
+        {
+          id: 101,
+          author: 'Mark Edwards',
+          avatarUrl: '/images/default-avatar.jpg',
+          title: 'This rumor could shake up the league!',
+          content: 'Lots of buzz on page ' + page,
+        }
+      ]
+    },
+    {
+      id: 2,
+      type: 'video',
+      title: `Amazing Homerun Highlight (Page ${page})`,
+      description: 'Check out this clutch homerun by the star player!',
+      fullText: `A 2-run homer on page ${page}.`,
+      videoUrl:
+        'https://cuts.diamond.mlb.com/FORGE/2019/2019-04/22/abdef6c1-be0c15cf-0075faf5-csvm-diamondx64-asset_1280x720_59_4000K.mp4',
+      upvotes: 25,
+      downvotes: 1,
+      comments: [
+        {
+          id: 201,
+          author: 'GrandSlam',
+          avatarUrl: '/images/default-avatar.jpg',
+          title: 'Clutch Performance',
+          content: 'Unbelievable! That crack of the bat gave me chills.'
+        }
+      ]
+    },
+    {
+      id: 3,
+      type: 'news',
+      title: `Injury Update (Page ${page})`,
+      description: 'Star pitcher is expected to return soon...',
+      fullText: `Good news on page ${page}: the ace is recovering.`,
+      upvotes: 5,
+      downvotes: 0,
+      comments: [
+        {
+          id: 301,
+          author: 'FastballFreak',
+          avatarUrl: '/images/default-avatar.jpg',
+          title: 'Crucial for the Postseason',
+          content: 'They need him healthy.'
+        }
+      ]
+    }
+  ];
+
+  return baseItems.map((item, index) => {
+    return {
+      ...item,
+      id: parseInt(`${page}${index}`), // Ensure a unique ID per page
+    };
+  });
+}
 
 function RecommendationsPage() {
   // Left sidebar placeholders
@@ -12,93 +81,6 @@ function RecommendationsPage() {
     { id: 200, fullName: 'Mookie Betts' }
   ];
 
-  // Sample feed items (news & videos)
-  const [feedItems, setFeedItems] = useState([
-    {
-      id: 1,
-      type: 'news',
-      title: 'Breaking: Big Trade Rumors',
-      description:
-        'Rumors are swirling about a potential blockbuster trade happening soon...',
-      fullText: `Multiple sources indicate a major trade between two top contenders could be on the horizon.
-Details are sparse, but insiders claim several star players might be involved...`,
-      upvotes: 10,
-      downvotes: 2,
-      comments: [
-        {
-          id: 101,
-          author: 'Mark Edwards',
-          avatarUrl: '/images/default-avatar.jpg',
-          title: 'This rumor could shake up the league!',
-          content:
-            'I’ve never seen so much buzz around a potential trade. It might completely change the playoff picture.'
-        },
-        {
-          id: 102,
-          author: 'Blake Reid',
-          avatarUrl: '/images/default-avatar.jpg',
-          title: 'Hope it’s real',
-          content:
-            'This could turn a mediocre team into a real contender. Fingers crossed!'
-        }
-      ]
-    },
-    {
-      id: 2,
-      type: 'video',
-      title: 'Amazing Homerun Highlight',
-      description: 'Check out this clutch homerun by the star player!',
-      fullText: `Watch the superstar outfielder smash a 2-run homer in the bottom of the 9th 
-to seal the game. One of the best moments of the season so far!`,
-      videoUrl:
-        'https://cuts.diamond.mlb.com/FORGE/2019/2019-04/22/abdef6c1-be0c15cf-0075faf5-csvm-diamondx64-asset_1280x720_59_4000K.mp4',
-      upvotes: 25,
-      downvotes: 1,
-      comments: [
-        {
-          id: 201,
-          author: 'GrandSlam',
-          avatarUrl: '/images/default-avatar.jpg',
-          title: 'Clutch Performance',
-          content: 'Unbelievable! That crack of the bat gave me chills.'
-        },
-        {
-          id: 202,
-          author: 'ClutchCity',
-          avatarUrl: '/images/default-avatar.jpg',
-          title: 'MVP Material',
-          content: 'He’s definitely the MVP so far this season.'
-        }
-      ]
-    },
-    {
-      id: 3,
-      type: 'news',
-      title: 'Injury Update',
-      description: 'Star pitcher is expected to return soon after a brief IL stint...',
-      fullText: `Good news: the team's ace pitcher is recovering faster than expected 
-and could return to the mound in just a few days. This is a major boost for any playoff hopes.`,
-      upvotes: 5,
-      downvotes: 0,
-      comments: [
-        {
-          id: 301,
-          author: 'FastballFreak',
-          avatarUrl: '/images/default-avatar.jpg',
-          title: 'Crucial for the Postseason',
-          content: 'They need him healthy if they want to make a deep run.'
-        },
-        {
-          id: 302,
-          author: 'ChangeUpChad',
-          avatarUrl: '/images/default-avatar.jpg',
-          title: 'Cautious Optimism',
-          content: 'I just hope they don’t rush him back too soon.'
-        }
-      ]
-    }
-  ]);
-
   // Placeholder upcoming events
   const upcomingEvents = [
     { id: 1, date: 'Jan 20', event: 'Spring Training Begins' },
@@ -106,13 +88,66 @@ and could return to the mound in just a few days. This is a major boost for any 
     { id: 3, date: 'Mar 27', event: 'Opening Day' }
   ];
 
+  // Track all feed items
+  const [feedItems, setFeedItems] = useState([]);
+  // Page counter for “infinite scroll”
+  const [page, setPage] = useState(1);
+  // Whether we are currently fetching more
+  const [loading, setLoading] = useState(false);
+
   // Track the post open in the modal (if any)
   const [expandedPost, setExpandedPost] = useState(null);
-
   // For new comment text
   const [newComment, setNewComment] = useState('');
 
-  // Voting logic
+  // ---------
+  // FETCH LOGIC
+  // ---------
+  const fetchMorePosts = async () => {
+    setLoading(true);
+    await new Promise((r) => setTimeout(r, 800));
+    const newPosts = generateMockPosts(page);
+    setFeedItems((prev) => [...prev, ...newPosts]);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchMorePosts();
+  }, [page]);
+
+  // Infinite scroll intersection observer
+  const observerRef = useRef(null);
+  const sentinelRef = useRef(null);
+
+  useEffect(() => {
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+    }
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !loading) {
+          setPage((prev) => prev + 1);
+        }
+      },
+      {
+        rootMargin: '200px',
+      }
+    );
+
+    if (sentinelRef.current) {
+      observerRef.current.observe(sentinelRef.current);
+    }
+
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
+    };
+  }, [loading]);
+
+  // ----------
+  // VOTING LOGIC
+  // ----------
   const handleUpvote = (id) => {
     setFeedItems((prev) =>
       prev.map((item) =>
@@ -129,25 +164,24 @@ and could return to the mound in just a few days. This is a major boost for any 
     );
   };
 
-  // Open modal for a specific post
+  // ----------
+  // MODAL LOGIC
+  // ----------
   const handleOpenModal = (post) => {
     setExpandedPost(post);
-    setNewComment(''); // clear out the previous comment if any
+    setNewComment('');
   };
 
-  // Close modal
   const handleCloseModal = () => {
     setExpandedPost(null);
   };
 
-  // Add a new comment (local only)
   const handleAddComment = (e) => {
     e.preventDefault();
     if (!newComment.trim()) return;
 
     setExpandedPost((prevPost) => {
       if (!prevPost) return null;
-
       const updatedComments = [
         ...prevPost.comments,
         {
@@ -158,7 +192,6 @@ and could return to the mound in just a few days. This is a major boost for any 
           content: newComment
         }
       ];
-
       return { ...prevPost, comments: updatedComments };
     });
     setNewComment('');
@@ -171,7 +204,8 @@ and could return to the mound in just a few days. This is a major boost for any 
         <div className="grid grid-cols-12 gap-8">
           {/* LEFT SIDEBAR */}
           <aside className="col-span-3 hidden lg:block">
-            <div className="space-y-6 sticky top-20">
+            {/* Make this div sticky */}
+            <div className="sticky top-20 space-y-6">
               {/* Followed Teams */}
               <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-4 transition-all">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
@@ -292,7 +326,7 @@ and could return to the mound in just a few days. This is a major boost for any 
                   </button>
                 </div>
 
-                {/* Button to read the full post (opens modal) */}
+                {/* Read More (opens modal) */}
                 <div className="mt-4">
                   <button
                     onClick={() => handleOpenModal(item)}
@@ -305,10 +339,16 @@ and could return to the mound in just a few days. This is a major boost for any 
                 </div>
               </div>
             ))}
+
+            {/* Infinite scroll sentinel */}
+            <div ref={sentinelRef} className="py-4 text-center text-gray-500">
+              {loading ? 'Loading more...' : 'Scroll to load more'}
+            </div>
           </main>
 
-          {/* RIGHT SIDEBAR: "Floating Island" of upcoming events */}
+          {/* RIGHT SIDEBAR */}
           <aside className="col-span-3 hidden lg:block">
+            {/* Make this div sticky */}
             <div className="sticky top-20">
               <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-4 transition-all">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
@@ -346,7 +386,6 @@ and could return to the mound in just a few days. This is a major boost for any 
             aria-hidden="true"
             onClick={handleCloseModal}
           />
-
           {/* Modal Panel */}
           <div className="flex min-h-full items-center justify-center p-4 text-center sm:items-center">
             <div
@@ -381,12 +420,10 @@ and could return to the mound in just a few days. This is a major boost for any 
 
               {/* Modal Content */}
               <div className="mt-2 text-left">
-                {/* Title */}
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
                   {expandedPost.title}
                 </h2>
 
-                {/* Video if applicable */}
                 {expandedPost.type === 'video' && expandedPost.videoUrl && (
                   <div className="mb-4">
                     <video
@@ -400,17 +437,15 @@ and could return to the mound in just a few days. This is a major boost for any 
                   </div>
                 )}
 
-                {/* Full text */}
                 <p className="text-gray-700 dark:text-gray-200 whitespace-pre-line">
                   {expandedPost.fullText}
                 </p>
 
-                {/* Comments section */}
+                {/* Comments */}
                 <div className="mt-8">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
                     Comments
                   </h3>
-
                   {expandedPost.comments && expandedPost.comments.length > 0 ? (
                     <ul className="space-y-8">
                       {expandedPost.comments.map((comment) => (
@@ -418,7 +453,6 @@ and could return to the mound in just a few days. This is a major boost for any 
                           key={comment.id}
                           className="flex flex-col sm:flex-row sm:space-x-4"
                         >
-                          {/* Avatar */}
                           <div className="shrink-0 mb-2 sm:mb-0">
                             <img
                               className="h-12 w-12 rounded-full object-cover"
@@ -428,22 +462,15 @@ and could return to the mound in just a few days. This is a major boost for any 
                               alt={comment.author}
                             />
                           </div>
-
-                          {/* Main comment content */}
                           <div>
-                            {/* Name */}
                             <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
                               {comment.author}
                             </p>
-
-                            {/* Title (optional) */}
                             {comment.title && (
                               <p className="mt-1 font-semibold text-gray-900 dark:text-gray-100">
                                 {comment.title}
                               </p>
                             )}
-
-                            {/* Body/content */}
                             <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
                               {comment.content}
                             </p>
@@ -458,7 +485,7 @@ and could return to the mound in just a few days. This is a major boost for any 
                   )}
                 </div>
 
-                {/* Response form */}
+                {/* Add New Comment */}
                 <div className="mt-8">
                   <h4 className="text-md font-semibold text-gray-900 dark:text-gray-100 mb-2">
                     Add Your Comment
