@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import PageTransition from '../components/PageTransition';
+import TranslatedText from '../components/TranslatedText';
 
 // A helper function to simulate new data fetch:
 function generateMockPosts(page = 1) {
@@ -220,7 +221,7 @@ function RecommendationsPage() {
               {/* Followed Teams */}
               <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-4 transition-all">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                  Followed Teams
+                  <TranslatedText text="Followed Teams" />
                 </h2>
                 {followedTeams.length > 0 ? (
                   followedTeams.map((team) => (
@@ -229,13 +230,13 @@ function RecommendationsPage() {
                       className="flex items-center justify-between py-2 border-b last:border-b-0 border-gray-200 dark:border-gray-700"
                     >
                       <span className="text-gray-800 dark:text-gray-200">
-                        {team.name}
+                        <TranslatedText text={team.name} />
                       </span>
                     </div>
                   ))
                 ) : (
                   <p className="text-gray-500 dark:text-gray-400">
-                    No teams followed.
+                    <TranslatedText text="No teams followed." />
                   </p>
                 )}
               </div>
@@ -243,7 +244,7 @@ function RecommendationsPage() {
               {/* Followed Players */}
               <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-4 transition-all">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                  Followed Players
+                  <TranslatedText text="Followed Players" />
                 </h2>
                 {followedPlayers.length > 0 ? (
                   followedPlayers.map((player) => (
@@ -252,13 +253,13 @@ function RecommendationsPage() {
                       className="flex items-center justify-between py-2 border-b last:border-b-0 border-gray-200 dark:border-gray-700"
                     >
                       <span className="text-gray-800 dark:text-gray-200">
-                        {player.fullName}
+                        <TranslatedText text={player.fullName} />
                       </span>
                     </div>
                   ))
                 ) : (
                   <p className="text-gray-500 dark:text-gray-400">
-                    No players followed.
+                    <TranslatedText text="No players followed." />
                   </p>
                 )}
               </div>
@@ -275,10 +276,10 @@ function RecommendationsPage() {
                            hover:shadow-lg duration-300 ease-in-out"
               >
                 <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                  {item.title}
+                  <TranslatedText text={item.title} />
                 </h3>
                 <p className="mt-2 text-gray-700 dark:text-gray-300">
-                  {item.description}
+                  <TranslatedText text={item.description} />
                 </p>
 
                 {/* If it's a video, show the video player */}
@@ -300,6 +301,7 @@ function RecommendationsPage() {
                   <button
                     onClick={() => handleUpvote(item.id)}
                     className="flex items-center space-x-1 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                    aria-label={`Upvote ${item.title}`}
                   >
                     <svg
                       className="w-5 h-5"
@@ -319,6 +321,7 @@ function RecommendationsPage() {
                   <button
                     onClick={() => handleDownvote(item.id)}
                     className="flex items-center space-x-1 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                    aria-label={`Downvote ${item.title}`}
                   >
                     <svg
                       className="w-5 h-5"
@@ -345,7 +348,7 @@ function RecommendationsPage() {
                                dark:text-indigo-400 dark:hover:text-indigo-300
                                transition-colors"
                   >
-                    Read More &rarr;
+                    <TranslatedText text="Read More" /> &rarr;
                   </button>
                 </div>
               </div>
@@ -353,7 +356,11 @@ function RecommendationsPage() {
 
             {/* Infinite scroll sentinel */}
             <div ref={sentinelRef} className="py-4 text-center text-gray-500">
-              {loading ? 'Loading more...' : 'Scroll to load more'}
+              {loading ? (
+                <TranslatedText text="Loading more..." />
+              ) : (
+                <TranslatedText text="Scroll to load more" />
+              )}
             </div>
           </main>
 
@@ -362,7 +369,7 @@ function RecommendationsPage() {
             <div className="fixed w-[280px] right-[calc((100vw-80rem)/2+1.5rem)] top-24">
               <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-4 transition-all">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                  Upcoming Events
+                  <TranslatedText text="Upcoming Events" />
                 </h2>
                 {upcomingEvents.map((event) => (
                   <div
@@ -373,7 +380,7 @@ function RecommendationsPage() {
                       {event.date}
                     </span>
                     <span className="text-gray-700 dark:text-gray-300">
-                      {event.event}
+                      <TranslatedText text={event.event} />
                     </span>
                   </div>
                 ))}
@@ -412,7 +419,7 @@ function RecommendationsPage() {
                            transition-colors"
                 onClick={handleCloseModal}
               >
-                <span className="sr-only">Close</span>
+                <span className="sr-only"><TranslatedText text="Close" /></span>
                 <svg
                   className="h-6 w-6"
                   fill="none"
@@ -433,7 +440,7 @@ function RecommendationsPage() {
               <div className="mt-2 text-left">
                 {/* Title */}
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-                  {expandedPost.title}
+                  <TranslatedText text={expandedPost.title} />
                 </h2>
 
                 {/* Video if applicable */}
@@ -452,13 +459,13 @@ function RecommendationsPage() {
 
                 {/* Full text */}
                 <p className="text-gray-700 dark:text-gray-200 whitespace-pre-line">
-                  {expandedPost.fullText}
+                  <TranslatedText text={expandedPost.fullText} />
                 </p>
 
                 {/* Comments section */}
                 <div className="mt-8">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                    Comments
+                    <TranslatedText text="Comments" />
                   </h3>
 
                   {expandedPost.comments && expandedPost.comments.length > 0 ? (
@@ -503,7 +510,7 @@ function RecommendationsPage() {
                     </ul>
                   ) : (
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      No comments yet.
+                      <TranslatedText text="No comments yet." />
                     </p>
                   )}
                 </div>
@@ -511,7 +518,7 @@ function RecommendationsPage() {
                 {/* Response form */}
                 <div className="mt-8">
                   <h4 className="text-md font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                    Add Your Comment
+                    <TranslatedText text="Add Your Comment" />
                   </h4>
                   <form onSubmit={handleAddComment} className="space-y-2">
                     <textarea
@@ -533,7 +540,7 @@ function RecommendationsPage() {
                                  focus:outline-none focus:ring-2 focus:ring-blue-500
                                  dark:focus:ring-blue-400 transition-colors"
                     >
-                      Submit
+                      <TranslatedText text="Submit" />
                     </button>
                   </form>
                 </div>
