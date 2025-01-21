@@ -40,7 +40,7 @@ function Home() {
 
   return (
     <PageTransition>
-      <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8 mt-16">
         <div className="text-center">
           <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white sm:text-4xl">
             <TranslatedText text="Welcome to GoatSquad" />
