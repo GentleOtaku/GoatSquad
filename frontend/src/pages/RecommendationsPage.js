@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import PageTransition from '../components/PageTransition';
 import { useAuth } from '../contexts/AuthContext';
+import TranslatedText from '../components/TranslatedText';
 
 // A helper function to simulate new data fetch:
 function generateMockPosts(page = 1) {
+  // For demo, we'll just replicate some posts, maybe with slight variations
+  // In a real app, you'd fetch from an API endpoint with the page/offset.
   const baseItems = [
     {
       id: 1,
@@ -63,10 +66,12 @@ function generateMockPosts(page = 1) {
     }
   ];
 
+  // In a real scenario, you'll have unique IDs for each item. Here,
+  // we just produce new IDs so we don't clash with existing ones.
   return baseItems.map((item, index) => {
     return {
       ...item,
-      id: parseInt(`${page}${index}`), // Ensure a unique ID per page
+      id: parseInt(`${page}${index}`), // e.g. page=2 => 20,21,22
     };
   });
 }
@@ -108,7 +113,7 @@ function RecommendationsPage() {
   const [error, setError] = useState(null);
   const [hasMore, setHasMore] = useState(true);
 
-  // ---------
+  // -----------
   // FETCH LOGIC
   // ---------
   const fetchRecommendations = async (pageNum) => {
@@ -200,9 +205,9 @@ function RecommendationsPage() {
     };
   }, [isLoading, hasMore]);
 
-  // ----------
+  // -----------
   // VOTING LOGIC
-  // ----------
+  // -----------
   const handleUpvote = (id) => {
     setFeedItems((prev) =>
       prev.map((item) =>
@@ -219,24 +224,26 @@ function RecommendationsPage() {
     );
   };
 
-  // ----------
+  // --------
   // MODAL LOGIC
-  // ----------
+  // --------
+  // Open modal for a specific post
   const handleOpenModal = (post) => {
     setExpandedPost(post);
-    setNewComment('');
+    setNewComment(''); // clear out any previous text
   };
-
+  // Close modal
   const handleCloseModal = () => {
     setExpandedPost(null);
   };
-
+  // Add a new comment
   const handleAddComment = (e) => {
     e.preventDefault();
     if (!newComment.trim()) return;
 
     setExpandedPost((prevPost) => {
       if (!prevPost) return null;
+
       const updatedComments = [
         ...prevPost.comments,
         {
@@ -247,6 +254,7 @@ function RecommendationsPage() {
           content: newComment
         }
       ];
+
       return { ...prevPost, comments: updatedComments };
     });
     setNewComment('');
@@ -254,17 +262,16 @@ function RecommendationsPage() {
 
   return (
     <PageTransition>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 mt-16">
         {/* Grid layout: left sidebar, main feed, right sidebar */}
         <div className="grid grid-cols-12 gap-8">
           {/* LEFT SIDEBAR */}
-          <aside className="col-span-3 hidden lg:block">
-            {/* Make this div sticky */}
-            <div className="sticky top-20 space-y-6">
+          <aside className="col-span-3 hidden lg:block relative">
+            <div className="fixed w-[280px] left-[calc((100vw-80rem)/2+1.5rem)] space-y-6 top-24">
               {/* Followed Teams */}
               <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-4 transition-all">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                  Followed Teams
+                  <TranslatedText text="Followed Teams" />
                 </h2>
                 {followedTeams.length > 0 ? (
                   followedTeams.map((team) => (
@@ -273,13 +280,13 @@ function RecommendationsPage() {
                       className="flex items-center justify-between py-2 border-b last:border-b-0 border-gray-200 dark:border-gray-700"
                     >
                       <span className="text-gray-800 dark:text-gray-200">
-                        {team.name}
+                        <TranslatedText text={team.name} />
                       </span>
                     </div>
                   ))
                 ) : (
                   <p className="text-gray-500 dark:text-gray-400">
-                    No teams followed.
+                    <TranslatedText text="No teams followed." />
                   </p>
                 )}
               </div>
@@ -287,7 +294,7 @@ function RecommendationsPage() {
               {/* Followed Players */}
               <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-4 transition-all">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                  Followed Players
+                  <TranslatedText text="Followed Players" />
                 </h2>
                 {followedPlayers.length > 0 ? (
                   followedPlayers.map((player) => (
@@ -296,13 +303,13 @@ function RecommendationsPage() {
                       className="flex items-center justify-between py-2 border-b last:border-b-0 border-gray-200 dark:border-gray-700"
                     >
                       <span className="text-gray-800 dark:text-gray-200">
-                        {player.fullName}
+                        <TranslatedText text={player.fullName} />
                       </span>
                     </div>
                   ))
                 ) : (
                   <p className="text-gray-500 dark:text-gray-400">
-                    No players followed.
+                    <TranslatedText text="No players followed." />
                   </p>
                 )}
               </div>
@@ -319,10 +326,10 @@ function RecommendationsPage() {
                            hover:shadow-lg duration-300 ease-in-out"
               >
                 <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                  {item.title}
+                  <TranslatedText text={item.title} />
                 </h3>
                 <p className="mt-2 text-gray-700 dark:text-gray-300">
-                  {item.description}
+                  <TranslatedText text={item.description} />
                 </p>
 
                 {/* If it's a video, show the video player */}
@@ -344,6 +351,7 @@ function RecommendationsPage() {
                   <button
                     onClick={() => handleUpvote(item.id)}
                     className="flex items-center space-x-1 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                    aria-label={`Upvote ${item.title}`}
                   >
                     <svg
                       className="w-5 h-5"
@@ -363,6 +371,7 @@ function RecommendationsPage() {
                   <button
                     onClick={() => handleDownvote(item.id)}
                     className="flex items-center space-x-1 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                    aria-label={`Downvote ${item.title}`}
                   >
                     <svg
                       className="w-5 h-5"
@@ -381,7 +390,7 @@ function RecommendationsPage() {
                   </button>
                 </div>
 
-                {/* Read More (opens modal) */}
+                {/* Button to read the full post (opens modal) */}
                 <div className="mt-4">
                   <button
                     onClick={() => handleOpenModal(item)}
@@ -389,7 +398,7 @@ function RecommendationsPage() {
                                dark:text-indigo-400 dark:hover:text-indigo-300
                                transition-colors"
                   >
-                    Read More &rarr;
+                    <TranslatedText text="Read More" /> &rarr;
                   </button>
                 </div>
               </div>
@@ -418,12 +427,11 @@ function RecommendationsPage() {
           </main>
 
           {/* RIGHT SIDEBAR */}
-          <aside className="col-span-3 hidden lg:block">
-            {/* Make this div sticky */}
-            <div className="sticky top-20">
+          <aside className="col-span-3 hidden lg:block relative">
+            <div className="fixed w-[280px] right-[calc((100vw-80rem)/2+1.5rem)] top-24">
               <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-4 transition-all">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                  Upcoming Events
+                  <TranslatedText text="Upcoming Events" />
                 </h2>
                 {upcomingEvents.map((event) => (
                   <div
@@ -434,7 +442,7 @@ function RecommendationsPage() {
                       {event.date}
                     </span>
                     <span className="text-gray-700 dark:text-gray-300">
-                      {event.event}
+                      <TranslatedText text={event.event} />
                     </span>
                   </div>
                 ))}
@@ -457,6 +465,7 @@ function RecommendationsPage() {
             aria-hidden="true"
             onClick={handleCloseModal}
           />
+
           {/* Modal Panel */}
           <div className="flex min-h-full items-center justify-center p-4 text-center sm:items-center">
             <div
@@ -472,7 +481,7 @@ function RecommendationsPage() {
                            transition-colors"
                 onClick={handleCloseModal}
               >
-                <span className="sr-only">Close</span>
+                <span className="sr-only"><TranslatedText text="Close" /></span>
                 <svg
                   className="h-6 w-6"
                   fill="none"
@@ -491,10 +500,12 @@ function RecommendationsPage() {
 
               {/* Modal Content */}
               <div className="mt-2 text-left">
+                {/* Title */}
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-                  {expandedPost.title}
+                  <TranslatedText text={expandedPost.title} />
                 </h2>
 
+                {/* Video if applicable */}
                 {expandedPost.type === 'video' && expandedPost.videoUrl && (
                   <div className="mb-4">
                     <video
@@ -508,15 +519,17 @@ function RecommendationsPage() {
                   </div>
                 )}
 
+                {/* Full text */}
                 <p className="text-gray-700 dark:text-gray-200 whitespace-pre-line">
-                  {expandedPost.fullText}
+                  <TranslatedText text={expandedPost.fullText} />
                 </p>
 
-                {/* Comments */}
+                {/* Comments section */}
                 <div className="mt-8">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                    Comments
+                    <TranslatedText text="Comments" />
                   </h3>
+
                   {expandedPost.comments && expandedPost.comments.length > 0 ? (
                     <ul className="space-y-8">
                       {expandedPost.comments.map((comment) => (
@@ -524,6 +537,7 @@ function RecommendationsPage() {
                           key={comment.id}
                           className="flex flex-col sm:flex-row sm:space-x-4"
                         >
+                          {/* Avatar */}
                           <div className="shrink-0 mb-2 sm:mb-0">
                             <img
                               className="h-12 w-12 rounded-full object-cover"
@@ -533,15 +547,22 @@ function RecommendationsPage() {
                               alt={comment.author}
                             />
                           </div>
+
+                          {/* Main comment content */}
                           <div>
+                            {/* Name */}
                             <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
                               {comment.author}
                             </p>
+
+                            {/* Title (optional) */}
                             {comment.title && (
                               <p className="mt-1 font-semibold text-gray-900 dark:text-gray-100">
                                 {comment.title}
                               </p>
                             )}
+
+                            {/* Body/content */}
                             <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
                               {comment.content}
                             </p>
@@ -551,15 +572,15 @@ function RecommendationsPage() {
                     </ul>
                   ) : (
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      No comments yet.
+                      <TranslatedText text="No comments yet." />
                     </p>
                   )}
                 </div>
 
-                {/* Add New Comment */}
+                {/* Response form */}
                 <div className="mt-8">
                   <h4 className="text-md font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                    Add Your Comment
+                    <TranslatedText text="Add Your Comment" />
                   </h4>
                   <form onSubmit={handleAddComment} className="space-y-2">
                     <textarea
@@ -581,7 +602,7 @@ function RecommendationsPage() {
                                  focus:outline-none focus:ring-2 focus:ring-blue-500
                                  dark:focus:ring-blue-400 transition-colors"
                     >
-                      Submit
+                      <TranslatedText text="Submit" />
                     </button>
                   </form>
                 </div>
