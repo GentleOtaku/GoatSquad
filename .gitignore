@@ -267,4 +267,4 @@ frontend/.env
 *.json
 
 #Model
-backend/backend/knn_model.pkl
+backend/knn_model.pkl
