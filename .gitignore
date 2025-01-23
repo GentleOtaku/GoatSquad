@@ -265,3 +265,6 @@ output/
 backend/.env
 frontend/.env
 *.json
+
+#Model
+backend/backend/knn_model.pkl
