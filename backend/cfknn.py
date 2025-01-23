@@ -27,36 +27,43 @@ def load_model(model_path='knn_model.pkl'):
         print(f"Model not found at {abs_model_path}. Please train the model first.")
         return None, None
 
-def recommend_reels(user_id, model_knn, user_reel_matrix, num_recommendations=5):
-    user_index = user_id - 1  
-    distances, indices = model_knn.kneighbors(user_reel_matrix.iloc[user_index, :].values.reshape(1, -1), n_neighbors=10)
+def recommend_reels(user_id, model_knn, user_reel_matrix, num_recommendations=5, offset=0):
+    user_index = user_id - 1
+    distances, indices = model_knn.kneighbors(
+        user_reel_matrix.iloc[user_index, :].values.reshape(1, -1), 
+        n_neighbors=20  # Get more neighbors to support pagination
+    )
     similar_users = indices.flatten()
     reel_scores = {}
 
     for i in similar_users:
         for reel_id in user_reel_matrix.columns:
-            if user_reel_matrix.iloc[user_index][reel_id] == 0:  
+            if user_reel_matrix.iloc[user_index][reel_id] == 0:
                 reel_scores[reel_id] = reel_scores.get(reel_id, 0) + user_reel_matrix.iloc[i][reel_id]
 
-    recommended_reels = sorted(reel_scores.items(), key=lambda x: x[1], reverse=True)[:num_recommendations]
-    print(f"Top {num_recommendations} reel recommendations for User {user_id}:")
+    recommended_reels = sorted(reel_scores.items(), key=lambda x: x[1], reverse=True)
+    # Apply pagination
+    paginated_reels = recommended_reels[offset:offset + num_recommendations]
     
-    for reel_id, score in recommended_reels:
-        print(f"Reel ID: {reel_id}, Predicted Score: {score}")
-    
-    return [{"reel_id": reel_id, "predicted_score": score} for reel_id, score in recommended_reels]
+    return [{"reel_id": reel_id, "predicted_score": score} for reel_id, score in paginated_reels]
 
-def run_main(table, user_id=10, num_recommendations=3, model_path='knn_model.pkl'):
+def run_main(table, user_id=10, num_recommendations=3, offset=0, model_path='knn_model.pkl'):
     ratings = load_data(table)
     if ratings is None:
-        return
+        return []
     user_reel_matrix = ratings.pivot_table(index='user_id', columns='reel_id', values='rating', fill_value=0)
 
     model_knn, user_reel_matrix_loaded = load_model(model_path)
     if model_knn is None:
         model_knn, user_reel_matrix_loaded = build_and_save_model(user_reel_matrix, model_path)
 
-    recommendations = recommend_reels(user_id, model_knn, user_reel_matrix_loaded, num_recommendations)
+    recommendations = recommend_reels(
+        user_id, 
+        model_knn, 
+        user_reel_matrix_loaded, 
+        num_recommendations,
+        offset
+    )
     return recommendations
 
 #run_main(table)

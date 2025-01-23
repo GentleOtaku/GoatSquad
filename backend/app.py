@@ -229,19 +229,29 @@ def remove_rating():
 def predict_recommendations():
     """Get reel recommendations for a user"""
     try:
-        id = int(request.args.get('user_id', default=0))  
-        num_recs = int(request.args.get('num_recommendations', default=5))  
-        table = request.args.get('table', default='user_ratings_db')  
+        user_id = int(request.args.get('user_id', default=0))
+        page = int(request.args.get('page', default=1))
+        per_page = int(request.args.get('per_page', default=5))
+        table = request.args.get('table', default='user_ratings_db')
 
-        # Run the model
+        # Calculate offset based on page number
+        offset = (page - 1) * per_page
+        
+        # Run the model with pagination
         recommendations = run_main(
             table=table,
-            user_id=id,
-            num_recommendations=num_recs,
+            user_id=user_id,
+            num_recommendations=per_page,
+            offset=offset,
             model_path='knn_model.pkl'
         )
 
-        return jsonify({'success': True, 'recommendations': recommendations}), 200
+        return jsonify({
+            'success': True, 
+            'recommendations': recommendations,
+            'page': page,
+            'has_more': len(recommendations) == per_page  # True if there might be more results
+        }), 200
     except Exception as e:
         logger.error(f"Error predicting recommendations: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'message': str(e)}), 500

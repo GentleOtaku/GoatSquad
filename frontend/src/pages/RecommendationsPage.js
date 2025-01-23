@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import PageTransition from '../components/PageTransition';
+import { useAuth } from '../contexts/AuthContext';
 
 // A helper function to simulate new data fetch:
 function generateMockPosts(page = 1) {
@@ -90,7 +91,7 @@ function RecommendationsPage() {
 
   // Track all feed items
   const [feedItems, setFeedItems] = useState([]);
-  // Page counter for “infinite scroll”
+  // Page counter for "infinite scroll"
   const [page, setPage] = useState(1);
   // Whether we are currently fetching more
   const [loading, setLoading] = useState(false);
@@ -100,22 +101,77 @@ function RecommendationsPage() {
   // For new comment text
   const [newComment, setNewComment] = useState('');
 
+  // Get current user from AuthContext
+  const { user } = useAuth();
+  const [recommendations, setRecommendations] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [hasMore, setHasMore] = useState(true);
+
   // ---------
   // FETCH LOGIC
   // ---------
-  const fetchMorePosts = async () => {
-    setLoading(true);
-    await new Promise((r) => setTimeout(r, 800));
-    const newPosts = generateMockPosts(page);
-    setFeedItems((prev) => [...prev, ...newPosts]);
-    setLoading(false);
+  const fetchRecommendations = async (pageNum) => {
+    if (!user?.id) {
+      setError('No user ID found');
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const response = await fetch(
+        `${process.env.REACT_APP_BACKEND_URL}/recommend/predict?user_id=${user.id}&page=${pageNum}&per_page=5&table=user_ratings_db`
+      );
+      const data = await response.json();
+      
+      if (data.success) {
+        // Transform recommendations into feed items
+        const newRecommendations = await Promise.all(data.recommendations.map(async (rec) => {
+          const videoResponse = await fetch(
+            `${process.env.REACT_APP_BACKEND_URL}/api/mlb/video?play_id=${rec.reel_id}`
+          );
+          const videoData = await videoResponse.json();
+          
+          return {
+            id: rec.reel_id,
+            type: 'video',
+            title: `Recommended Highlight`,
+            description: `This highlight was selected just for you with a match score of ${rec.predicted_score.toFixed(1)}`,
+            videoUrl: videoData.success ? videoData.video_url : null,
+            upvotes: Math.floor(rec.predicted_score),
+            downvotes: 0,
+            comments: []
+          };
+        }));
+
+        setRecommendations(prev => pageNum === 1 ? newRecommendations : [...prev, ...newRecommendations]);
+        setHasMore(data.has_more);
+      } else {
+        setError('Failed to fetch recommendations');
+      }
+    } catch (err) {
+      setError(err.message);
+      console.error('Error fetching recommendations:', err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
+  // Initial load
   useEffect(() => {
-    fetchMorePosts();
-  }, [page]);
+    fetchRecommendations(1);
+  }, [user?.id]);
 
-  // Infinite scroll intersection observer
+  // Infinite scroll handler
+  const handleLoadMore = () => {
+    if (!isLoading && hasMore) {
+      setPage(prev => prev + 1);
+      fetchRecommendations(page + 1);
+    }
+  };
+
+  // Intersection Observer setup
   const observerRef = useRef(null);
   const sentinelRef = useRef(null);
 
@@ -123,15 +179,14 @@ function RecommendationsPage() {
     if (observerRef.current) {
       observerRef.current.disconnect();
     }
+
     observerRef.current = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && !loading) {
-          setPage((prev) => prev + 1);
+        if (entries[0].isIntersecting && !isLoading && hasMore) {
+          handleLoadMore();
         }
       },
-      {
-        rootMargin: '200px',
-      }
+      { rootMargin: '200px' }
     );
 
     if (sentinelRef.current) {
@@ -143,7 +198,7 @@ function RecommendationsPage() {
         observerRef.current.disconnect();
       }
     };
-  }, [loading]);
+  }, [isLoading, hasMore]);
 
   // ----------
   // VOTING LOGIC
@@ -256,7 +311,7 @@ function RecommendationsPage() {
 
           {/* MAIN FEED */}
           <main className="col-span-12 lg:col-span-6 space-y-6">
-            {feedItems.map((item) => (
+            {recommendations.map((item) => (
               <div
                 key={item.id}
                 className="bg-white dark:bg-gray-800 shadow rounded-lg p-4
@@ -270,7 +325,7 @@ function RecommendationsPage() {
                   {item.description}
                 </p>
 
-                {/* If it’s a video, show the video player */}
+                {/* If it's a video, show the video player */}
                 {item.type === 'video' && item.videoUrl && (
                   <div className="mt-4">
                     <video
@@ -340,9 +395,25 @@ function RecommendationsPage() {
               </div>
             ))}
 
+            {/* Loading indicator */}
+            {isLoading && (
+              <div className="text-center py-4">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+                <p className="mt-2 text-gray-600">Loading more recommendations...</p>
+              </div>
+            )}
+
+            {/* Error message */}
+            {error && (
+              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+                <strong className="font-bold">Error!</strong>
+                <span className="block sm:inline"> {error}</span>
+              </div>
+            )}
+
             {/* Infinite scroll sentinel */}
             <div ref={sentinelRef} className="py-4 text-center text-gray-500">
-              {loading ? 'Loading more...' : 'Scroll to load more'}
+              {hasMore ? 'Loading more...' : 'No more recommendations'}
             </div>
           </main>
 
