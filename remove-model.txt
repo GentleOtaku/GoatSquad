@@ -1,0 +1,1 @@
+backend/knn_model.pkl

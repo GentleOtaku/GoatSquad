@@ -7,6 +7,10 @@ import os
 from sqlalchemy import create_engine
 from db import load_data
 
+# Global variables to cache the model and matrix
+_cached_model = None
+_cached_matrix = None
+
 def build_and_save_model(user_reel_matrix, model_path='knn_model.pkl'):
     user_reel_matrix = user_reel_matrix.astype(float)
     user_reel_matrix_sparse = csr_matrix(user_reel_matrix.values)  
@@ -16,16 +20,35 @@ def build_and_save_model(user_reel_matrix, model_path='knn_model.pkl'):
     print(f"Model trained and saved to {model_path}")
     return model_knn, user_reel_matrix
 
-def load_model(model_path='knn_model.pkl'):
-    # Convert relative path to absolute path
+def get_cached_model(model_path='knn_model.pkl'):
+    """Get model from cache or build it if not exists"""
+    global _cached_model, _cached_matrix
+    
+    if _cached_model is not None and _cached_matrix is not None:
+        print("Using cached model")
+        return _cached_model, _cached_matrix
+        
+    # Try to load from file
     abs_model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), model_path)
     if os.path.exists(abs_model_path):
         print(f"Loading model from {abs_model_path}...")
-        model_knn, user_reel_matrix = joblib.load(abs_model_path)
-        return model_knn, user_reel_matrix
+        _cached_model, _cached_matrix = joblib.load(abs_model_path)
+        return _cached_model, _cached_matrix
     else:
-        print(f"Model not found at {abs_model_path}. Please train the model first.")
-        return None, None
+        print("Model not found, building new model...")
+        # Load data and build model
+        ratings = load_data('user_ratings_db')
+        if ratings is None:
+            return None, None
+            
+        user_reel_matrix = ratings.pivot_table(
+            index='user_id', 
+            columns='reel_id', 
+            values='rating', 
+            fill_value=0
+        )
+        _cached_model, _cached_matrix = build_and_save_model(user_reel_matrix, model_path)
+        return _cached_model, _cached_matrix
 
 def recommend_reels(user_id, model_knn, user_reel_matrix, num_recommendations=5, offset=0):
     user_index = user_id - 1
@@ -53,7 +76,7 @@ def run_main(table, user_id=10, num_recommendations=3, offset=0, model_path='knn
         return []
     user_reel_matrix = ratings.pivot_table(index='user_id', columns='reel_id', values='rating', fill_value=0)
 
-    model_knn, user_reel_matrix_loaded = load_model(model_path)
+    model_knn, user_reel_matrix_loaded = get_cached_model(model_path)
     if model_knn is None:
         model_knn, user_reel_matrix_loaded = build_and_save_model(user_reel_matrix, model_path)
 
