@@ -14,7 +14,7 @@ from flask_migrate import Migrate
 from google.cloud.sql.connector import Connector
 import sqlalchemy
 from werkzeug.middleware.proxy_fix import ProxyFix
-from cfknn import load_model, recommend_reels, build_and_save_model, run_main
+from cfknn import recommend_reels, build_and_save_model, run_main
 from db import load_data, add, remove, get_video_url
 
 # Set up logging
