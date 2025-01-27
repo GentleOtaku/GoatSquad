@@ -67,9 +67,14 @@ def token_required(f):
         if 'Authorization' in request.headers:
             auth_header = request.headers['Authorization']
             try:
-                token = auth_header.split(" ")[1]  # Bearer <token>
-            except IndexError:
-                logger.error("Invalid Authorization header format")
+                # More robust token extraction
+                parts = auth_header.split()
+                if len(parts) != 2 or parts[0].lower() != 'bearer':
+                    logger.error("Invalid Authorization header format")
+                    return jsonify({'success': False, 'message': 'Invalid token format'}), 401
+                token = parts[1]
+            except Exception as e:
+                logger.error(f"Error parsing Authorization header: {str(e)}")
                 return jsonify({'success': False, 'message': 'Invalid token format'}), 401
 
         if not token:
@@ -77,8 +82,21 @@ def token_required(f):
             return jsonify({'success': False, 'message': 'Token is missing'}), 401
 
         try:
-            # Add verify_exp=False to disable expiration checking
-            data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"], options={"verify_exp": False})
+            # Add more validation options
+            data = jwt.decode(
+                token, 
+                SECRET_KEY, 
+                algorithms=["HS256"],
+                options={
+                    "verify_exp": False,
+                    "require": ["user_id"]
+                }
+            )
+            
+            if 'user_id' not in data:
+                logger.error("Token missing user_id claim")
+                return jsonify({'success': False, 'message': 'Invalid token'}), 401
+
             current_user = User.query.filter_by(client_id=data['user_id']).first()
             
             if current_user is None:
@@ -87,6 +105,12 @@ def token_required(f):
 
             return f(current_user=current_user, *args, **kwargs)
             
+        except jwt.exceptions.DecodeError as e:
+            logger.error(f"Token decode error: {str(e)}")
+            return jsonify({'success': False, 'message': 'Invalid token format'}), 401
+        except jwt.exceptions.InvalidTokenError as e:
+            logger.error(f"Invalid token error: {str(e)}")
+            return jsonify({'success': False, 'message': 'Invalid token'}), 401
         except Exception as e:
             logger.error(f"Token validation error: {str(e)}", exc_info=True)
             return jsonify({'success': False, 'message': 'Token validation failed'}), 401
@@ -163,12 +187,18 @@ class AuthService:
                 logger.warning(f"Invalid password for user: {email}")
                 return {'success': False, 'message': 'Invalid email or password'}, 401
 
-            # Token without expiration
-            token = jwt.encode({
-                'user_id': user.client_id
-            }, SECRET_KEY, algorithm="HS256")
+            # Ensure consistent token format
+            token = jwt.encode(
+                {
+                    'user_id': user.client_id,
+                    'iat': datetime.now(timezone.utc)  # Add issued at time
+                }, 
+                SECRET_KEY, 
+                algorithm="HS256"
+            )
 
             logger.info(f"Login successful for user: {email}")
+            logger.debug(f"Generated token: {token[:10]}...")  # Log first 10 chars for debugging
 
             return {
                 'success': True,
@@ -179,10 +209,7 @@ class AuthService:
 
         except Exception as e:
             logger.error(f"Login error: {str(e)}", exc_info=True)
-            return {
-                'success': False, 
-                'message': 'An error occurred during login. Please try again.'
-            }, 500
+            return {'success': False, 'message': 'Login failed'}, 500
 
     @staticmethod
     def update_user_profile(user_id, data):
