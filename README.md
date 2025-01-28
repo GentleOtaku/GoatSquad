@@ -44,7 +44,7 @@ A personalized MLB news feed that delivers AI-powered updates about your favorit
 1. Start the backend:
    ```bash
    cd backend
-   python app.py
+   uvicorn app:app --host 0.0.0.0 --port 5000 --reload
    ```
 
 2. Start the frontend:
