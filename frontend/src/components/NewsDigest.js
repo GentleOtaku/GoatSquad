@@ -35,23 +35,12 @@ function NewsDigest({ teams, players }) {
           players: playerNames
         });
 
-        const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/news/digest`, {
-          params: {
-            'teams[]': teamNames,
-            'players[]': playerNames
-          },
-          paramsSerializer: params => {
-            const searchParams = new URLSearchParams();
-            Object.entries(params).forEach(([key, values]) => {
-              if (Array.isArray(values)) {
-                values.forEach(value => searchParams.append(key, value));
-              } else {
-                searchParams.append(key, values);
-              }
-            });
-            return searchParams.toString();
-          }
-        });
+        // Build the URL with properly formatted query parameters
+        const params = new URLSearchParams();
+        teamNames.forEach(team => params.append('teams', team));
+        playerNames.forEach(player => params.append('players', player));
+
+        const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/news/digest?${params.toString()}`);
 
         console.log('Digest response:', response.data);
         

@@ -1,35 +1,43 @@
-from flask import jsonify, request
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
 import jwt
 from datetime import datetime, timezone, timedelta
-from functools import wraps
+from typing import Optional
 import os
-from werkzeug.security import generate_password_hash, check_password_hash
+from passlib.context import CryptContext
 import logging
-from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm import Session
+from sqlalchemy import Column, Integer, String, JSON
+from database import Base, get_db
 import random
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-db = SQLAlchemy()
+# Password hashing
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# At the top after imports
-print("10. Auth.py imported, directory:", os.getcwd())
+# JWT settings
+SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'your-secret-key-here')
+ALGORITHM = "HS256"
 
-class User(db.Model):
-    __tablename__ = 'client_info'  # Your existing table name
+# OAuth2 scheme
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+class User(Base):
+    __tablename__ = 'client_info'
     
-    client_id = db.Column(db.Integer, primary_key=True)  # Simple primary key
-    password = db.Column(db.String(256), nullable=False)
-    followed_teams = db.Column(db.JSON, default=list)  # Changed from favorite_team
-    followed_players = db.Column(db.JSON, default=list)  # Changed from favorite_player
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    first_name = db.Column(db.String(80), nullable=False)
-    last_name = db.Column(db.String(80), nullable=False)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    timezone = db.Column(db.String(50), default='UTC')
-    avatarurl = db.Column(db.String(200))
+    client_id = Column(Integer, primary_key=True)
+    password = Column(String(256), nullable=False)
+    followed_teams = Column(JSON, default=list)
+    followed_players = Column(JSON, default=list)
+    email = Column(String(120), unique=True, nullable=False)
+    first_name = Column(String(80), nullable=False)
+    last_name = Column(String(80), nullable=False)
+    username = Column(String(80), unique=True, nullable=False)
+    timezone = Column(String(50), default='UTC')
+    avatarurl = Column(String(200))
 
     def to_dict(self):
         return {
@@ -41,148 +49,126 @@ class User(db.Model):
             'timezone': self.timezone,
             'avatarUrl': self.avatarurl,
             'preferences': {
-                'teams': self.followed_teams or [],  # Changed from favorite_team
-                'players': self.followed_players or []  # Changed from favorite_player
+                'teams': self.followed_teams or [],
+                'players': self.followed_players or []
             }
         }
 
     @staticmethod
-    def generate_unique_id():
+    def generate_unique_id(db: Session):
         """Generate a unique client ID between 1 and 10_000"""
         while True:
             new_id = random.randint(1, 10_000)
-            # Check if this ID already exists
-            if not User.query.filter_by(client_id=new_id).first():
+            if not db.query(User).filter(User.client_id == new_id).first():
                 return new_id
 
-# Get secret key from environment variable or use a default for development
-SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'your-secret-key-here')
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
 
+def get_password_hash(password: str) -> str:
+    return pwd_context.hash(password)
 
-def token_required(f):
-    """Decorator to protect routes that require authentication"""
-
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        auth_header = request.headers.get('Authorization', None)
-
-        if not auth_header:
-            logger.error("No Authorization header provided")
-            return jsonify({'success': False, 'message': 'Token is missing'}), 401
-
-        # Check that it starts with 'Bearer '
-        parts = auth_header.split()
-        if len(parts) != 2 or parts[0].lower() != 'bearer':
-            logger.error(f"Invalid Authorization header format: {auth_header}")
-            return jsonify({'success': False, 'message': 'Invalid token format'}), 401
-
-        token = parts[1]
-
-        # Optional extra check: ensure token has at least 2 dots
-        if token.count('.') != 2:
-            logger.error("JWT token does not contain the required 3 segments")
-            return jsonify({'success': False, 'message': 'Invalid token structure'}), 401
-
-        # Now try decoding
-        try:
-            data = jwt.decode(
-                token,
-                SECRET_KEY,
-                algorithms=["HS256"],
-                options={"verify_exp": False}
-            )
-            current_user = User.query.filter_by(client_id=data['user_id']).first()
-
-            if current_user is None:
-                logger.error(f"User not found for token user_id: {data.get('user_id')}")
-                return jsonify({'success': False, 'message': 'User not found'}), 401
-
-            return f(current_user=current_user, *args, **kwargs)
-
-        except jwt.DecodeError:
-            logger.error("Failed to decode JWT token", exc_info=True)
-            return jsonify({'success': False, 'message': 'Token decode failed'}), 401
-        except Exception as e:
-            logger.error(f"Token validation error: {str(e)}", exc_info=True)
-            return jsonify({'success': False, 'message': 'Token validation failed'}), 401
-
-    return decorated
-
+async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: int = payload.get("user_id")
+        if user_id is None:
+            raise credentials_exception
+    except jwt.JWTError:
+        raise credentials_exception
+    
+    user = db.query(User).filter(User.client_id == user_id).first()
+    if user is None:
+        raise credentials_exception
+    return user
 
 class AuthService:
     @staticmethod
-    def register_user(data):
+    def register_user(data: dict, db: Session):
         """Register a new user"""
         try:
             logger.info("Starting user registration")
             
             # Check if email already exists
-            if User.query.filter_by(email=data['email']).first():
-                return {'success': False, 'message': 'Email already registered'}, 409
+            if db.query(User).filter(User.email == data['email']).first():
+                raise HTTPException(status_code=409, detail="Email already registered")
 
             # Check if username already exists
-            if User.query.filter_by(username=data['username']).first():
-                return {'success': False, 'message': 'Username already taken'}, 409
+            if db.query(User).filter(User.username == data['username']).first():
+                raise HTTPException(status_code=409, detail="Username already taken")
 
             new_user = User(
-                client_id=User.generate_unique_id(),  # Generate unique ID
+                client_id=User.generate_unique_id(db),
                 email=data['email'],
-                password=generate_password_hash(data['password']),
+                password=get_password_hash(data['password']),
                 first_name=data['firstName'],
                 last_name=data['lastName'],
                 username=data['username'],
                 timezone=data.get('timezone', 'UTC'),
                 avatarurl=data.get('avatarUrl', '/images/default-avatar.jpg'),
-                followed_teams=data.get('teams', []),  # Changed from favorite_team
-                followed_players=data.get('players', [])  # Changed from favorite_player
+                followed_teams=data.get('teams', []),
+                followed_players=data.get('players', [])
             )
 
-            db.session.add(new_user)
-            db.session.commit()
+            db.add(new_user)
+            db.commit()
+            db.refresh(new_user)
 
             token = jwt.encode({
                 'user_id': new_user.client_id
-            }, SECRET_KEY, algorithm="HS256")
+            }, SECRET_KEY, algorithm=ALGORITHM)
 
             return {
                 'success': True,
                 'message': 'Registration successful',
                 'user': new_user.to_dict(),
                 'token': token
-            }, 201
+            }
 
+        except HTTPException as e:
+            raise e
         except Exception as e:
-            db.session.rollback()
+            db.rollback()
             logger.error(f"Registration error: {str(e)}", exc_info=True)
-            return {
-                'success': False,
-                'message': 'An error occurred during registration.'
-            }, 500
+            raise HTTPException(
+                status_code=500,
+                detail="An error occurred during registration."
+            )
 
     @staticmethod
-    def login_user(email, password):
+    def login_user(email: str, password: str, db: Session):
         """Authenticate a user and return a JWT token"""
         try:
             logger.info(f"Login attempt for email: {email}")
             
             if not email or not password:
-                logger.error("Missing email or password")
-                return {'success': False, 'message': 'Email and password are required'}, 400
+                raise HTTPException(
+                    status_code=400,
+                    detail="Email and password are required"
+                )
 
-            user = User.query.filter_by(email=email).first()
+            user = db.query(User).filter(User.email == email).first()
             
             if not user:
-                logger.warning(f"No user found with email: {email}")
-                return {'success': False, 'message': 'Invalid email or password'}, 401
+                raise HTTPException(
+                    status_code=401,
+                    detail="Invalid email or password"
+                )
 
-            if not check_password_hash(user.password, password):
-                logger.warning(f"Invalid password for user: {email}")
-                return {'success': False, 'message': 'Invalid email or password'}, 401
+            if not verify_password(password, user.password):
+                raise HTTPException(
+                    status_code=401,
+                    detail="Invalid email or password"
+                )
 
-            # Token without expiration
             token = jwt.encode({
                 'user_id': user.client_id
-            }, SECRET_KEY, algorithm="HS256")
+            }, SECRET_KEY, algorithm=ALGORITHM)
 
             logger.info(f"Login successful for user: {email}")
 
@@ -191,23 +177,25 @@ class AuthService:
                 'message': 'Login successful',
                 'token': token,
                 'user': user.to_dict()
-            }, 200
+            }
 
+        except HTTPException as e:
+            raise e
         except Exception as e:
             logger.error(f"Login error: {str(e)}", exc_info=True)
-            return {
-                'success': False, 
-                'message': 'An error occurred during login. Please try again.'
-            }, 500
+            raise HTTPException(
+                status_code=500,
+                detail="An error occurred during login. Please try again."
+            )
 
     @staticmethod
-    def update_user_profile(user_id, data):
+    def update_user_profile(user_id: int, data: dict, db: Session):
         """Update user profile"""
         try:
-            user = db.session.get(User, user_id)
+            user = db.query(User).filter(User.client_id == user_id).first()
             
             if user is None:
-                return {'success': False, 'message': 'User not found'}, 404
+                raise HTTPException(status_code=404, detail="User not found")
 
             # Don't allow email or password updates through this endpoint
             forbidden_updates = ['email', 'password', 'password_hash', 'id']
@@ -217,29 +205,35 @@ class AuthService:
             for key, value in update_data.items():
                 setattr(user, key, value)
             
-            db.session.commit()
+            db.commit()
             
-            return {'success': True, 'user': user.to_dict()}, 200
+            return {'success': True, 'user': user.to_dict()}
 
+        except HTTPException as e:
+            raise e
         except Exception as e:
-            db.session.rollback()
+            db.rollback()
             logger.error(f"Error in update_user_profile: {str(e)}", exc_info=True)
-            return {'success': False, 'message': str(e)}, 500
+            raise HTTPException(
+                status_code=500,
+                detail=str(e)
+            )
 
-# Initialize with a default admin user if no users exist
-def init_admin():
+def init_admin(db: Session):
+    """Initialize with a default admin user if no users exist"""
     try:
-        if not User.query.first():
+        if not db.query(User).first():
             admin_user = User(
+                client_id=User.generate_unique_id(db),
                 email='admin@example.com',
-                password_hash=generate_password_hash('admin123'),
-                firstName='Admin',
-                lastName='User',
+                password=get_password_hash('admin123'),
+                first_name='Admin',
+                last_name='User',
                 username='admin'
             )
-            db.session.add(admin_user)
-            db.session.commit()
+            db.add(admin_user)
+            db.commit()
             logger.info("Initialized default admin user")
     except Exception as e:
-        db.session.rollback()
+        db.rollback()
         logger.error(f"Error creating admin user: {str(e)}") 

@@ -1,172 +1,208 @@
-from flask import Flask, request, jsonify, Response
-from flask_restx import Api, Resource
-from flask_cors import CORS
-from news_digest import get_news_digest
+from fastapi import FastAPI, Depends, HTTPException, Request, Response, Query
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy.orm import Session
+from typing import List, Optional
 import logging
 import requests
 from datetime import datetime
 import os
 from google.cloud import translate_v2 as translate
-from auth import AuthService, token_required, db, init_admin
+from auth import AuthService, get_current_user, User, init_admin
 import grpc
-from routes.mlb import mlb
-from flask_migrate import Migrate
-from google.cloud.sql.connector import Connector
-import sqlalchemy
-from werkzeug.middleware.proxy_fix import ProxyFix
+from database import get_db, engine, Base, get_database_url
+from news_digest import get_news_digest
 from cfknn import recommend_reels, build_and_save_model, run_main
 from db import load_data, add, remove, get_video_url, get_follow_vid
-from sqlalchemy import create_engine
-from sqlalchemy.sql import text
+from sqlalchemy import create_engine, text
 from gemini import run_gemini_prompt
 import re
+from pydantic import BaseModel
+from routes.mlb import router as mlb_router
 
+# Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 ORIGINAL_DIR = os.path.dirname(os.path.abspath(__file__))
 
-def init_connection_pool():
-    """Initialize database connection"""
-    db_user = os.getenv("DB_USER")
-    db_pass = os.getenv("DB_PASS")
-    db_name = os.getenv("DB_NAME")
-    
-    DATABASE_URL = f"postgresql://{db_user}:{db_pass}@34.71.48.54:5432/{db_name}"
-    return DATABASE_URL
-
-app = Flask(__name__)
-
-@app.before_request
-def before_request():
-    os.chdir(ORIGINAL_DIR)
-
-print("2. Before Flask app creation:", os.getcwd())
-
-# Configure database connection
-app.config['SQLALCHEMY_DATABASE_URI'] = init_connection_pool()
-
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-db.init_app(app)
-print("11. Before Flask app creation:", os.getcwd())
-current_dir = os.getcwd()
-print("11. Before Flask app creation:", os.getcwd())
-print(current_dir)
-migrate = Migrate(app, db)
-
-with app.app_context():
-    try:
-        db.create_all()
-        # Initialize admin user
-        init_admin()
-    except Exception as e:
-        logger.error(f"Database initialization error: {str(e)}")
-        db.session.rollback()
-
-# Update CORS configuration
-CORS(app, resources={
-    r"/*": {
-        "origins": ["http://localhost:3000"],
-        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization"],
-        "expose_headers": ["Content-Range", "X-Content-Range"],
-        "supports_credentials": True
-    }
-})
-
-api = Api(app, version='1.0', 
+# Create FastAPI app
+app = FastAPI(
     title='MLB Fan Feed API',
-    description='API for MLB fan feed features')
+    description='API for MLB fan feed features',
+    version='1.0'
+)
 
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
+# Create database tables
+Base.metadata.create_all(bind=engine)
 
-news_ns = api.namespace('news', description='News operations')
+# Initialize admin user
+@app.on_event("startup")
+async def startup_event():
+    db = next(get_db())
+    init_admin(db)
 
-@news_ns.route('/digest')
-class NewsDigest(Resource):
-    @news_ns.doc('get_news_digest')
-    @news_ns.param('teams[]', 'Team names array')
-    @news_ns.param('players[]', 'Player names array')
-    def get(self):
-        """Get news digest for multiple teams and players"""
-        try:
-            # Get arrays from request args
-            teams = request.args.getlist('teams[]')
-            players = request.args.getlist('players[]')
+# Pydantic models for request/response validation
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+class RegisterRequest(BaseModel):
+    email: str
+    password: str
+    firstName: str
+    lastName: str
+    username: str
+    timezone: Optional[str] = 'UTC'
+    avatarUrl: Optional[str] = '/images/default-avatar.jpg'
+    teams: Optional[List[dict]] = []
+    players: Optional[List[dict]] = []
+
+class UserUpdateRequest(BaseModel):
+    firstName: Optional[str] = None
+    lastName: Optional[str] = None
+    timezone: Optional[str] = None
+    avatarUrl: Optional[str] = None
+    teams: Optional[List[dict]] = None
+    players: Optional[List[dict]] = None
+
+# Auth routes
+@app.post("/auth/register")
+async def register(request: RegisterRequest, db: Session = Depends(get_db)):
+    return AuthService.register_user(request.dict(), db)
+
+@app.post("/auth/login")
+async def login(request: LoginRequest, db: Session = Depends(get_db)):
+    return AuthService.login_user(request.email, request.password, db)
+
+@app.get("/auth/profile")
+async def get_profile(current_user: User = Depends(get_current_user)):
+    return {'success': True, 'user': current_user.to_dict()}
+
+@app.put("/auth/profile")
+async def update_profile(
+    request: UserUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    return AuthService.update_user_profile(current_user.client_id, request.dict(exclude_unset=True), db)
+
+# News routes
+@app.get("/news/digest")
+@app.get("/api/news/digest")
+async def news_digest(
+    teams: List[str] = Query(default=[]),
+    players: List[str] = Query(default=[])
+):
+    """
+    Get news digest for teams and players
+    
+    Query Parameters:
+    - teams: List of team names
+    - players: List of player names
+    """
+    try:
+        logger.info(f"Received news digest request with teams: {teams}, players: {players}")
+        
+        # Clean and validate the parameters
+        teams = [t.strip() for t in teams if t and t.strip()]
+        players = [p.strip() for p in players if p and p.strip()]
+        
+        logger.info(f"Cleaned parameters - teams: {teams}, players: {players}")
+        
+        if not teams and not players:
+            raise HTTPException(
+                status_code=400, 
+                detail="At least one team or player must be specified"
+            )
             
-            logger.info(f"Received request with teams: {teams}, players: {players}")
+        result = get_news_digest(teams=teams, players=players)
+        
+        if result.get('success'):
+            return result
+        else:
+            raise HTTPException(
+                status_code=500, 
+                detail=result.get('error', 'Unknown error occurred')
+            )
             
-            if not teams and not players:
-                return {'error': 'At least one team or player must be specified'}, 400
-            
-            # Filter out empty strings
-            teams = [t for t in teams if t]
-            players = [p for p in players if p]
-                
-            result = get_news_digest(teams=teams, players=players)
-            
-            if result['success']:
-                return jsonify(result)
-            else:
-                return {'error': result.get('error', 'Unknown error occurred')}, 500
-                
-        except Exception as e:
-            logger.error(f"Unexpected error: {str(e)}", exc_info=True)
-            return {'error': 'Internal server error'}, 500
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Unexpected error in news_digest: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Internal server error: {str(e)}"
+        )
 
-@app.route('/api/mlb/highlights')
-def get_highlights():
+# MLB routes
+@app.get("/api/mlb/highlights")
+async def get_highlights(team_id: Optional[str] = None, player_id: Optional[str] = None):
     """Proxy endpoint for MLB highlights"""
     try:
-        team_id = request.args.get('team_id')
-        player_id = request.args.get('player_id')
-        
         logger.info(f"Fetching highlights for team {team_id} and player {player_id}")
 
-        # First get schedule to find recent games
-        schedule_url = 'https://statsapi.mlb.com/api/v1/schedule'
-        schedule_params = {
-            'teamId': team_id,
-            'season': 2024,
-            'sportId': 1,
-            'gameType': 'R'
-        }
-
-        schedule_response = requests.get(schedule_url, params=schedule_params)
-        schedule_response.raise_for_status()
-        schedule_data = schedule_response.json()
-
         all_highlights = []
-        for date in schedule_data.get('dates', [])[:10]:  
-            for game in date.get('games', []):
-                game_pk = game.get('gamePk')
-                
-                # Get game content
-                content_url = f'https://statsapi.mlb.com/api/v1/game/{game_pk}/content'
-                content_response = requests.get(content_url)
-                content_response.raise_for_status()
-                content_data = content_response.json()
+        
+        if team_id:
+            # First get schedule to find recent games for team
+            schedule_url = 'https://statsapi.mlb.com/api/v1/schedule'
+            
+            # Try spring training games first
+            schedule_params = {
+                'teamId': team_id,
+                'season': 2024,
+                'sportId': 1,
+                'gameType': 'S'  # Spring training games
+            }
+            
+            schedule_response = requests.get(schedule_url, params=schedule_params)
+            if schedule_response.status_code == 200:
+                schedule_data = schedule_response.json()
+                all_highlights.extend(process_schedule_data(schedule_data, player_id))
 
-                # Look for highlights in game content
-                for highlight in content_data.get('highlights', {}).get('highlights', {}).get('items', []):
-                    # Check if highlight involves the player
-                    if any(keyword.get('type') == 'player_id' and 
-                          keyword.get('value') == str(player_id) 
-                          for keyword in highlight.get('keywordsAll', [])):
+            # Then try regular season games
+            schedule_params['gameType'] = 'R'  # Regular season games
+            schedule_response = requests.get(schedule_url, params=schedule_params)
+            if schedule_response.status_code == 200:
+                schedule_data = schedule_response.json()
+                all_highlights.extend(process_schedule_data(schedule_data, player_id))
+                
+        elif player_id:
+            # For players, we need to search in a different way
+            content_url = f'https://statsapi.mlb.com/api/v1/people/{player_id}/stats/game/current'
+            try:
+                content_response = requests.get(content_url)
+                if content_response.status_code == 200:
+                    player_data = content_response.json()
+                    if player_data and 'stats' in player_data:
+                        # Get recent games the player appeared in
+                        game_ids = [stat.get('gameId') for stat in player_data.get('stats', [])][:10]
                         
-                        # Get the best quality playback URL
-                        playbacks = highlight.get('playbacks', [])
-                        if playbacks:
-                            best_playback = max(playbacks, key=lambda x: int(x.get('height', 0) or 0))
-                            all_highlights.append({
-                                'title': highlight.get('title', ''),
-                                'description': highlight.get('description', ''),
-                                'url': best_playback.get('url'),
-                                'date': date.get('date'),
-                                'blurb': highlight.get('blurb', ''),
-                                'timestamp': highlight.get('date', date.get('date'))  # Use highlight date if available
-                            })
+                        # Get highlights for each game
+                        for game_id in game_ids:
+                            content_url = f'https://statsapi.mlb.com/api/v1/game/{game_id}/content'
+                            content_response = requests.get(content_url)
+                            if content_response.status_code == 200:
+                                content_data = content_response.json()
+                                if content_data:
+                                    highlights = process_game_highlights(content_data, player_id)
+                                    all_highlights.extend(highlights)
+            except Exception as e:
+                logger.error(f"Error fetching player highlights: {str(e)}")
+
+        if not all_highlights:
+            logger.warning(f"No highlights found for team {team_id} or player {player_id}")
+            return {'highlights': []}
 
         sorted_highlights = sorted(
             all_highlights,
@@ -175,107 +211,166 @@ def get_highlights():
         )[:5]
 
         logger.info(f"Found {len(sorted_highlights)} recent highlights")
-        return jsonify({'highlights': sorted_highlights})
+        return {'highlights': sorted_highlights}
 
     except requests.exceptions.RequestException as e:
         logger.error(f"Error making request to MLB API: {str(e)}")
-        return {'error': 'Failed to fetch highlights from MLB'}, 500
+        raise HTTPException(status_code=500, detail="Failed to fetch highlights from MLB")
     except Exception as e:
         logger.error(f"Error fetching highlights: {str(e)}", exc_info=True)
-        return {'error': 'Failed to fetch highlights'}, 500
+        raise HTTPException(status_code=500, detail="Failed to fetch highlights")
 
-@app.route('/recommend/add', methods=['POST', 'GET'])
-def add_rating():
-    """Add or update a user's rating for a reel"""
+def process_game_highlights(content_data, player_id):
+    """Process highlights from a single game's content data"""
+    highlights = []
+    
+    # Look for highlights in game content
+    game_highlights = content_data.get('highlights', {}).get('highlights', {}).get('items', [])
+    if not game_highlights:
+        # Try alternate path for highlights
+        game_highlights = content_data.get('highlights', {}).get('live', {}).get('items', [])
+
+    for highlight in game_highlights:
+        # If player_id is specified, check if highlight involves the player
+        if player_id and not any(keyword.get('type') == 'player_id' and 
+                               keyword.get('value') == str(player_id) 
+                               for keyword in highlight.get('keywordsAll', [])):
+            continue
+            
+        # Get the best quality playback URL
+        playbacks = highlight.get('playbacks', [])
+        if playbacks:
+            best_playback = max(playbacks, key=lambda x: int(x.get('height', 0) or 0))
+            highlights.append({
+                'title': highlight.get('title', ''),
+                'description': highlight.get('description', ''),
+                'url': best_playback.get('url'),
+                'date': highlight.get('date'),
+                'blurb': highlight.get('blurb', ''),
+                'timestamp': highlight.get('date')
+            })
+    
+    return highlights
+
+def process_schedule_data(schedule_data, player_id):
+    """Helper function to process schedule data and extract highlights"""
+    highlights = []
+    for date in schedule_data.get('dates', [])[:10]:
+        for game in date.get('games', []):
+            game_pk = game.get('gamePk')
+            
+            # Get game content
+            content_url = f'https://statsapi.mlb.com/api/v1/game/{game_pk}/content'
+            content_response = requests.get(content_url)
+            if content_response.status_code != 200:
+                continue
+                
+            content_data = content_response.json()
+            if content_data:
+                game_highlights = process_game_highlights(content_data, player_id)
+                for highlight in game_highlights:
+                    highlight['date'] = date.get('date')  # Add the date from schedule data
+                highlights.extend(game_highlights)
+    
+    return highlights
+
+@app.post("/recommend/add")
+async def add_rating(
+    user_id: str,
+    reel_id: str,
+    rating: float,
+    table: str = 'user_ratings_db'
+):
     try:
-        user_id = request.args.get('user_id')
-        reel_id = request.args.get('reel_id')
-        rating = request.args.get('rating')
-        table = request.args.get('table', default='user_ratings_db')
-
         if not all([user_id, reel_id, rating]):
-            return jsonify({'success': False, 'message': 'Missing required fields'}), 400
+            raise HTTPException(status_code=400, detail="Missing required fields")
 
-        try:
-            rating = float(rating)
-            if not (0 <= rating <= 5):
-                return jsonify({'success': False, 'message': 'Rating must be between 0 and 5'}), 400
-        except ValueError:
-            return jsonify({'success': False, 'message': 'Invalid rating value'}), 400
+        if not (0 <= rating <= 5):
+            raise HTTPException(status_code=400, detail="Rating must be between 0 and 5")
 
         add(user_id, reel_id, rating, table)
-        return jsonify({'success': True, 'message': 'Rating added successfully'}), 200
+        return {'success': True, 'message': 'Rating added successfully'}
     except Exception as e:
         logger.error(f"Error adding rating: {str(e)}", exc_info=True)
-        return jsonify({'success': False, 'message': str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.route('/recommend/remove', methods=['DELETE'])
-def remove_rating():
-    """Remove a user reel rating"""
+@app.delete("/recommend/remove")
+async def remove_rating(
+    user_id: str,
+    reel_id: str,
+    table: str = 'user_ratings_db'
+):
     try:
-        user_id = request.args.get('user_id')
-        reel_id = request.args.get('reel_id')
-        table = request.args.get('table', default='user_ratings_db')
-
         if not all([user_id, reel_id]):
-            return jsonify({'success': False, 'message': 'Missing required fields'}), 400
+            raise HTTPException(status_code=400, detail="Missing required fields")
 
         remove(user_id, reel_id, table)
-        return jsonify({'success': True, 'message': 'Rating removed successfully'}), 200
+        return {'success': True, 'message': 'Rating removed successfully'}
     except Exception as e:
         logger.error(f"Error removing rating: {str(e)}", exc_info=True)
-        return jsonify({'success': False, 'message': str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.route('/recommend/predict', methods=['GET'])
-def get_model_recommendations():
-    """Get recommendations from the model"""
+@app.get("/recommend/predict")
+async def get_model_recommendations(
+    user_id: int,
+    page: int = 1,
+    per_page: int = 5,
+    table: str = 'user_ratings_db'
+):
+    """
+    Get personalized video recommendations for a user.
+    Falls back to popular videos if no personalized recommendations are available.
+    """
     try:
-        user_id = int(request.args.get('user_id'))
-        page = int(request.args.get('page', default=1))
-        per_page = int(request.args.get('per_page', default=5))
-        table = request.args.get('table', default='user_ratings_db')
-        
+        logger.info(f"Getting recommendations for user {user_id}, page {page}, per_page {per_page}")
         offset = (page - 1) * per_page
+        
         recommendations, has_more = run_main(table, user_id=user_id, num_recommendations=per_page, offset=offset)
         
         if recommendations:
-            return jsonify({
+            logger.info(f"Found {len(recommendations)} recommendations for user {user_id}")
+            return {
                 'success': True,
                 'recommendations': recommendations,
                 'has_more': has_more
-            })
-        
-        return jsonify({'success': False, 'message': 'No recommendations found'}), 404
+            }
+        else:
+            logger.warning(f"No recommendations found for user {user_id}")
+            # Instead of raising a 404, return an empty list with success=true
+            return {
+                'success': True,
+                'recommendations': [],
+                'has_more': False,
+                'message': 'No recommendations available at this time'
+            }
         
     except Exception as e:
         logger.error(f"Error getting model recommendations: {str(e)}", exc_info=True)
-        return jsonify({'success': False, 'message': str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.route('/recommend/follow', methods=['GET'])
-@token_required
-def get_follow_recommendations(current_user):
-    """Get recommendations based on followed teams and players"""
+@app.get("/recommend/follow")
+async def get_follow_recommendations(
+    current_user: User = Depends(get_current_user),
+    table: str = 'mlb_highlights',
+    page: int = 1,
+    per_page: int = 5
+):
     try:
-        table = request.args.get('table', default='mlb_highlights')
-        page = int(request.args.get('page', default=1))
-        per_page = int(request.args.get('per_page', default=5))
-
-        # Get user's followed teams and players from database
         if not current_user:
-            return jsonify({'success': False, 'message': 'User not found'}), 404
+            raise HTTPException(status_code=404, detail="User not found")
 
         # Extract team names and player names from the JSON objects
         followed_teams = [team.get('name', '') for team in (current_user.followed_teams or [])]
         followed_players = [player.get('fullName', '') for player in (current_user.followed_players or [])]
 
         if not followed_teams and not followed_players:
-            return jsonify({'success': False, 'message': 'No teams or players followed'}), 400
+            raise HTTPException(status_code=400, detail="No teams or players followed")
 
         # Calculate offset for pagination
         offset = (page - 1) * per_page
 
         # Get multiple videos for followed teams/players with pagination
-        engine = create_engine(init_connection_pool())
+        engine = create_engine(get_database_url())
         query = text(f"""
             SELECT id as reel_id FROM {table} 
             WHERE player = ANY(:players) OR home_team = ANY(:teams) OR away_team = ANY(:teams)
@@ -283,7 +378,7 @@ def get_follow_recommendations(current_user):
             OFFSET :offset
             LIMIT :limit
         """)
-        
+
         with engine.connect() as connection:
             results = connection.execute(query, {
                 "players": followed_players, 
@@ -295,67 +390,63 @@ def get_follow_recommendations(current_user):
             if results:
                 has_more = len(results) > per_page
                 recommendations = [{"reel_id": row[0]} for row in results[:per_page]]
-                return jsonify({
+                return {
                     'success': True,
                     'recommendations': recommendations,
                     'has_more': has_more
-                })
+                }
             
-            return jsonify({'success': False, 'message': 'No matching videos found'}), 404
+            raise HTTPException(status_code=404, detail="No matching videos found")
             
+    except HTTPException as e:
+        raise e
     except Exception as e:
         logger.error(f"Error fetching follow recommendations: {str(e)}", exc_info=True)
-        return jsonify({'success': False, 'message': str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.route('/api/generate-blurb', methods=['POST'])
-def generate_blurb():
-    data = request.json
-    title = data.get('title')
+# Pydantic model for blurb request
+class BlurbRequest(BaseModel):
+    title: str
 
-    if not title:
-        logger.error("Title is required in the request.")
-        return jsonify({"success": False, "message": "Title is required"}), 400
-
-    title = re.sub(r"\s*\([^)]*\)$", "", title)
-
+@app.post("/api/generate-blurb")
+async def generate_blurb(request: BlurbRequest):
+    """Generate a short blurb description for a video title"""
     try:
+        logger.info(f"Generating blurb for title: {request.title}")
+        
+        if not request.title:
+            raise HTTPException(status_code=400, detail="Title is required")
+
+        title = re.sub(r"\s*\([^)]*\)$", "", request.title)
+
         prompt = f"Generate a short and engaging description for the baseball video titled: {title}. Keep your response to under 20 words. Your response should start with the content and just one sentence. Do not include filler like OK, here is a short and engaging description."
         description = run_gemini_prompt(prompt)
+        
+        if not description:
+            raise HTTPException(status_code=500, detail="Failed to generate description")
+            
         if ':' in description:
             description = description.split(':', 1)[1].strip()
-        if description:
-            return jsonify({
-                "success": True,
-                "description": description
-            })
-        else:
-            return jsonify({
-                "success": False,
-                "message": "Failed to generate description"
-            }), 500
+            
+        return {
+            "success": True,
+            "description": description
+        }
 
+    except HTTPException as e:
+        raise e
     except Exception as e:
         logger.error(f"Error in generating description: {str(e)}", exc_info=True)
-        return jsonify({
-            "success": False,
-            "message": "Internal server error"
-        }), 500
+        raise HTTPException(status_code=500, detail=str(e))
 
-# Initialize the translation client
+# Translation routes
 translate_client = translate.Client()
 
-@app.route('/api/translate', methods=['POST'])
-def translate_text():
+@app.post("/api/translate")
+async def translate_text(text: str, target_language: str = 'en'):
     try:
-        data = request.get_json()
-        text = data.get('text')
-        target_language = data.get('target_language', 'en')
-
         if not text:
-            return jsonify({
-                'success': False,
-                'message': 'No text provided for translation'
-            }), 400
+            raise HTTPException(status_code=400, detail="No text provided for translation")
 
         # Perform translation
         result = translate_client.translate(
@@ -363,154 +454,73 @@ def translate_text():
             target_language=target_language
         )
 
-        return jsonify({
+        return {
             'success': True,
             'translatedText': result['translatedText'],
             'sourceLanguage': result['detectedSourceLanguage']
-        })
+        }
 
     except Exception as e:
         logger.error(f"Translation error: {str(e)}", exc_info=True)
-        return jsonify({
-            'success': False,
-            'message': 'Translation failed',
-            'error': str(e)
-        }), 500
+        raise HTTPException(status_code=500, detail="Translation failed")
 
-@app.errorhandler(Exception)
-def handle_error(error):
-    logger.error(f"Unhandled error: {str(error)}", exc_info=True)
-    message = str(error)
-    status_code = 500
-    if hasattr(error, 'code'):
-        status_code = error.code
-    return jsonify({'success': False, 'message': message}), status_code
-
-auth_ns = api.namespace('auth', description='Authentication operations')
-
-@auth_ns.route('/register')
-class Register(Resource):
-    def post(self):
-        """Register a new user"""
-        try:
-            data = request.get_json()
-            logger.info(f"Register attempt for email: {data.get('email')}")
-            return AuthService.register_user(data)
-        except Exception as e:
-            logger.error(f"Registration error: {str(e)}", exc_info=True)
-            return {'success': False, 'message': str(e)}, 500
-
-@auth_ns.route('/login')
-class Login(Resource):
-    def post(self):
-        """Login user"""
-        try:
-            data = request.get_json()
-            logger.info(f"Login attempt for email: {data.get('email')}")
-            return AuthService.login_user(data.get('email'), data.get('password'))
-        except Exception as e:
-            logger.error(f"Login error: {str(e)}", exc_info=True)
-            return {'success': False, 'message': str(e)}, 500
-
-@auth_ns.route('/profile')
-class UserProfile(Resource):
-    @token_required
-    def get(self, current_user):
-        """Get user profile"""
-        try:
-            if not current_user:
-                return {'success': False, 'message': 'User not found'}, 404
-
-            logger.info(f"Profile fetch for user ID: {current_user.client_id}")
-            return {'success': True, 'user': current_user.to_dict()}, 200
-
-        except Exception as e:
-            logger.error(f"Profile fetch error: {str(e)}", exc_info=True)
-            return {'success': False, 'message': str(e)}, 500
-
-    @token_required
-    def put(self, current_user):
-        """Update user profile"""
-        try:
-            if not current_user:
-                return {'success': False, 'message': 'User not found'}, 404
-
-            data = request.get_json()
-            logger.info(f"Profile update for user ID: {current_user.client_id}")
-            return AuthService.update_user_profile(current_user.client_id, data)
-        except Exception as e:
-            logger.error(f"Profile update error: {str(e)}", exc_info=True)
-            return {'success': False, 'message': str(e)}, 500
-
-@app.route('/test')
-def test():
-    """Test endpoint to verify server is running"""
-    return jsonify({
-        'success': True,
-        'message': 'Backend server is running',
-        'timestamp': datetime.utcnow().isoformat()
-    })
-
-# Register blueprints
-app.register_blueprint(mlb)
-
-@app.route('/api/mlb/schedule', methods=['GET'])
-def get_mlb_schedule():
-    team_id = request.args.get('teamId')
-    start_date = request.args.get('startDate')
-    end_date = request.args.get('endDate')
-    
+@app.get("/api/mlb/schedule")
+async def get_mlb_schedule(
+    teamId: Optional[str] = None,
+    startDate: Optional[str] = None,
+    endDate: Optional[str] = None
+):
     try:
         response = requests.get(
             'https://statsapi.mlb.com/api/v1/schedule',
             params={
-                'teamId': team_id,
-                'startDate': start_date,
-                'endDate': end_date,
+                'teamId': teamId,
+                'startDate': startDate,
+                'endDate': endDate,
                 'sportId': 1,
                 'hydrate': 'team,venue'
             }
         )
-        return jsonify(response.json())
+        return response.json()
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.route('/api/preferences', methods=['GET', 'PUT'])
-@token_required
-def handle_preferences(current_user):
-    if request.method == 'GET':
-        return jsonify({
+@app.get("/api/preferences")
+async def get_preferences(current_user: User = Depends(get_current_user)):
+    return {
+        'success': True,
+        'preferences': {
+            'teams': current_user.followed_teams or [],
+            'players': current_user.followed_players or []
+        }
+    }
+
+@app.put("/api/preferences")
+async def update_preferences(
+    teams: List[dict],
+    players: List[dict],
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        current_user.followed_teams = teams
+        current_user.followed_players = players
+        db.commit()
+        
+        return {
             'success': True,
+            'message': 'Preferences updated successfully',
             'preferences': {
-                'teams': current_user.followed_teams or [],
-                'players': current_user.followed_players or []
+                'teams': current_user.followed_teams,
+                'players': current_user.followed_players
             }
-        })
-    
-    elif request.method == 'PUT':
-        try:
-            data = request.get_json()
-            current_user.followed_teams = data.get('teams', [])
-            current_user.followed_players = data.get('players', [])
-            db.session.commit()
-            
-            return jsonify({
-                'success': True,
-                'message': 'Preferences updated successfully',
-                'preferences': {
-                    'teams': current_user.followed_teams,
-                    'players': current_user.followed_players
-                }
-            })
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({
-                'success': False,
-                'message': str(e)
-            }), 500
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.route('/api/mlb/teams', methods=['GET'])
-def get_mlb_teams():
+@app.get("/api/mlb/teams")
+async def get_mlb_teams():
     try:
         logger.info("Attempting to fetch MLB teams...")
         response = requests.get(
@@ -524,119 +534,65 @@ def get_mlb_teams():
         )
         logger.info(f"MLB API Response Status: {response.status_code}")
         
-        # Add caching headers
         response_data = response.json()
-        resp = jsonify({
+        return {
             'teams': response_data.get('teams', []),
             'copyright': response_data.get('copyright', '')
-        })
-        resp.cache_control.max_age = 3600  # Cache for 1 hour
-        return resp
+        }
         
     except requests.exceptions.Timeout:
         logger.error("Timeout while fetching MLB teams")
-        # Return cached data if available
-        return jsonify({
-            'success': False,
-            'message': 'Request to MLB API timed out. Please try again.',
-            'error': 'TIMEOUT'
-        }), 504
+        raise HTTPException(
+            status_code=504,
+            detail="Request to MLB API timed out. Please try again."
+        )
         
     except requests.exceptions.RequestException as e:
         logger.error(f"Error fetching MLB teams: {str(e)}", exc_info=True)
-        return jsonify({
-            'success': False,
-            'message': f'Failed to fetch teams from MLB API: {str(e)}'
-        }), 500
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to fetch teams from MLB API: {str(e)}"
+        )
         
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}", exc_info=True)
-        return jsonify({
-            'success': False,
-            'message': f'An unexpected error occurred: {str(e)}'
-        }), 500
+        raise HTTPException(
+            status_code=500,
+            detail=f"An unexpected error occurred: {str(e)}"
+        )
 
-@app.errorhandler(requests.exceptions.RequestException)
-def handle_request_error(error):
-    logger.error(f"Request error: {str(error)}")
-    return jsonify({
-        'success': False,
-        'message': 'External API request failed',
-        'error': str(error)
-    }), 500
-
-@app.errorhandler(Exception)
-def handle_general_error(error):
-    logger.error(f"Unexpected error: {str(error)}")
-    return jsonify({
-        'success': False,
-        'message': 'An unexpected error occurred',
-        'error': str(error)
-    }), 500
-
-@app.route('/api/test', methods=['GET'])
-def test_endpoint():
-    return jsonify({
-        'success': True,
-        'message': 'Backend is working',
-        'timestamp': datetime.utcnow().isoformat()
-    })
-
-@app.route('/api/perform-action', methods=['POST'])
-def perform_action():
-    try:
-        # Call the recommendation system with default values
-        user_id = 10  # Default user_id
-        num_recommendations = 5  # Default number of recommendations
-        table = 'user_ratings_db'  # Default table
-        
-        # Run the model
-        recommendations = run_main(table, user_id=user_id, num_recommendations=num_recommendations, model_path='knn_model.pkl')
-        
-        return jsonify({
-            'success': True,
-            'message': 'Recommendations generated successfully!',
-            'data': {
-                'timestamp': datetime.utcnow().isoformat(),
-                'recommendations': recommendations,
-                'user_id': user_id,
-                'num_recommendations': num_recommendations
-            }
-        })
-    except Exception as e:
-        logger.error(f"Recommendation error: {str(e)}", exc_info=True)
-        return jsonify({
-            'success': False,
-            'message': str(e)
-        }), 500
-
-@app.route('/api/mlb/video', methods=['GET'])
-def get_video_url_endpoint():
+@app.get("/api/mlb/video")
+async def get_video_url_endpoint(play_id: str):
     """Get video URL and metadata from database using play ID"""
     try:
-        play_id = request.args.get('play_id')
         if not play_id:
-            return jsonify({'success': False, 'message': 'Play ID is required'}), 400
+            raise HTTPException(status_code=400, detail="Play ID is required")
 
         video_data = get_video_url(play_id)
         if not video_data:
-            return jsonify({'success': False, 'message': 'Video not found'}), 404
+            raise HTTPException(status_code=404, detail="Video not found")
 
-        return jsonify({
+        return {
             'success': True,
             'video_url': video_data['video_url'],
             'title': video_data['title'],
             'blurb': video_data['blurb']
-        })
+        }
 
+    except HTTPException as e:
+        raise e
     except Exception as e:
         logger.error(f"Error fetching video URL: {str(e)}", exc_info=True)
-        return jsonify({'success': False, 'message': str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
 
-if __name__ == '__main__':
-    app.run(
-        host='0.0.0.0', 
-        port=int(os.getenv('BACKEND_PORT', 5000)),
-        debug=True,
-        use_reloader=False
-    )
+@app.get("/test")
+async def test():
+    """Test endpoint to verify server is running"""
+    return {
+        'success': True,
+        'message': 'Backend server is running',
+        'timestamp': datetime.utcnow().isoformat()
+    }
+
+# Add MLB routes
+app.include_router(mlb_router)

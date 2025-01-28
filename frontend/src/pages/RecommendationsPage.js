@@ -76,23 +76,65 @@ function generateMockPosts(page = 1) {
   });
 }
 
+const generateFallbackDescription = (title) => {
+  // Extract the most relevant part of the title
+  const cleanTitle = title.replace(/\([^)]*\)/g, '').trim();
+  return `Watch this exciting highlight featuring ${cleanTitle}`;
+};
+
 const fetchDescriptionFromGemini = async (title) => {
   try {
-    const response = await fetch(
-      `${process.env.REACT_APP_BACKEND_URL}/api/generate-blurb`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ title }),
+    if (!title) {
+      console.warn("No title provided for description generation");
+      return generateFallbackDescription(title || "this baseball moment");
+    }
+
+    // Keep track of retries
+    let retries = 0;
+    const maxRetries = 2;
+    let lastError = null;
+
+    while (retries <= maxRetries) {
+      try {
+        const response = await fetch(
+          `${process.env.REACT_APP_BACKEND_URL}/api/generate-blurb`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ title: title.trim() }),
+          }
+        );
+
+        if (!response.ok) {
+          const error = await response.json();
+          console.error(`Error from generate-blurb (attempt ${retries + 1}):`, error);
+          lastError = error;
+          throw new Error(error.detail || "Failed to generate description");
+        }
+
+        const data = await response.json();
+        if (data.success && data.description) {
+          return data.description;
+        }
+        throw new Error("Invalid response format");
+      } catch (error) {
+        retries++;
+        if (retries <= maxRetries) {
+          // Wait before retrying (exponential backoff)
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, retries) * 1000));
+          continue;
+        }
+        throw error;
       }
-    );
-    const data = await response.json();
-    return data.success ? data.description : title;
+    }
+
+    console.error("All retries failed:", lastError);
+    return generateFallbackDescription(title);
   } catch (error) {
     console.error("Error fetching description:", error);
-    return "Description unavailable.";
+    return generateFallbackDescription(title);
   }
 };
 

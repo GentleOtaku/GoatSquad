@@ -54,9 +54,26 @@ def recommend_reels(user_id, model_knn, user_reel_matrix, num_recommendations=5,
     """Get recommendations for a user"""
     try:
         print(f"Recommending reels for user {user_id}, offset: {offset}, limit: {num_recommendations}")
-        user_index = user_reel_matrix.index.get_loc(user_id)
+        
+        # Check if user exists in matrix
+        if user_id not in user_reel_matrix.index:
+            print(f"User {user_id} not found in matrix, returning popular items")
+            # For new users, return popular items based on average ratings
+            popular_reels = user_reel_matrix.mean().sort_values(ascending=False)
+            
+            # Apply pagination
+            start_idx = offset
+            end_idx = min(offset + num_recommendations, len(popular_reels))
+            paginated_reels = popular_reels[start_idx:end_idx]
+            
+            has_more = end_idx < len(popular_reels)
+            recommendations = [
+                {"reel_id": str(reel_id), "predicted_score": float(score)} 
+                for reel_id, score in paginated_reels.items()
+            ]
+            return recommendations, has_more
 
-        print(user_id)
+        user_index = user_reel_matrix.index.get_loc(user_id)
         
         # Get similar users
         distances, indices = model_knn.kneighbors(
@@ -70,8 +87,31 @@ def recommend_reels(user_id, model_knn, user_reel_matrix, num_recommendations=5,
             if i == user_index:
                 continue
             for reel_id in user_reel_matrix.columns:
-                if user_reel_matrix.iloc[user_index][reel_id] == 0:
-                    reel_scores[reel_id] = reel_scores.get(reel_id, 0) + user_reel_matrix.iloc[i][reel_id]
+                if user_reel_matrix.iloc[user_index][reel_id] == 0:  # Only recommend unwatched videos
+                    score = user_reel_matrix.iloc[i][reel_id]
+                    if score > 0:  # Only consider positive ratings
+                        reel_scores[reel_id] = reel_scores.get(reel_id, 0) + score
+
+        # If no recommendations from similar users, fall back to popular items
+        if not reel_scores:
+            print(f"No personalized recommendations for user {user_id}, falling back to popular items")
+            popular_reels = user_reel_matrix.mean().sort_values(ascending=False)
+            
+            # Filter out already watched videos
+            user_watched = user_reel_matrix.loc[user_id]
+            popular_reels = popular_reels[user_watched == 0]
+            
+            # Apply pagination
+            start_idx = offset
+            end_idx = min(offset + num_recommendations, len(popular_reels))
+            paginated_reels = popular_reels[start_idx:end_idx]
+            
+            has_more = end_idx < len(popular_reels)
+            recommendations = [
+                {"reel_id": str(reel_id), "predicted_score": float(score)} 
+                for reel_id, score in paginated_reels.items()
+            ]
+            return recommendations, has_more
 
         # Sort recommendations by score
         recommended_reels = sorted(reel_scores.items(), key=lambda x: x[1], reverse=True)
@@ -84,11 +124,29 @@ def recommend_reels(user_id, model_knn, user_reel_matrix, num_recommendations=5,
         has_more = end_idx < len(recommended_reels)
         print(f"Found {len(recommended_reels)} total recommendations, returning {len(paginated_reels)} items, has_more: {has_more}")
         
-        return [{"reel_id": reel_id, "predicted_score": score} for reel_id, score in paginated_reels], has_more
+        return [
+            {"reel_id": str(reel_id), "predicted_score": float(score)} 
+            for reel_id, score in paginated_reels
+        ], has_more
         
     except Exception as e:
         print(f"Error in recommend_reels: {str(e)}")
-        return [], False
+        # Return popular items as fallback
+        try:
+            popular_reels = user_reel_matrix.mean().sort_values(ascending=False)
+            start_idx = offset
+            end_idx = min(offset + num_recommendations, len(popular_reels))
+            paginated_reels = popular_reels[start_idx:end_idx]
+            
+            has_more = end_idx < len(popular_reels)
+            recommendations = [
+                {"reel_id": str(reel_id), "predicted_score": float(score)} 
+                for reel_id, score in paginated_reels.items()
+            ]
+            return recommendations, has_more
+        except Exception as inner_e:
+            print(f"Error in fallback recommendation: {str(inner_e)}")
+            return [], False
 
 def run_main(table, user_id=10, num_recommendations=3, offset=0, model_path='knn_model.pkl'):
     ratings = load_data(table)
