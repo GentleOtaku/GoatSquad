@@ -33,3 +33,9 @@ pytest-cov==4.1.0
 scikit-learn
 pandas
 numpy
+
+#Highlights
+google-cloud-storage
+ffmpeg-python
+moviepy ==1.0.3
+google-cloud-aiplatform

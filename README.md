@@ -65,3 +65,5 @@ A personalized MLB news feed that delivers AI-powered updates about your favorit
    ```bash
    docker-compose up
    ```
+
+MIGHT HAVE TO RUN brew install ffmpeg TO RUN HIGHLIGHT.py
