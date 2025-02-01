@@ -50,7 +50,9 @@ function RecommendationsPage() {
       setIsLoadingMore(true);
       const token = localStorage.getItem("auth_token") || "";
       const response = await fetch(
-        `${process.env.REACT_APP_BACKEND_URL}/recommend/follow?page=${pageNum}&search=${encodeURIComponent(
+        `${
+          process.env.REACT_APP_BACKEND_URL
+        }/recommend/follow?page=${pageNum}&search=${encodeURIComponent(
           theSearchTerm
         )}`,
         {
@@ -110,7 +112,9 @@ function RecommendationsPage() {
     try {
       setIsLoading(true);
       const response = await fetch(
-        `${process.env.REACT_APP_BACKEND_URL}/recommend/predict?user_id=${user.id}&page=${pageNum}&per_page=5&search=${encodeURIComponent(
+        `${process.env.REACT_APP_BACKEND_URL}/recommend/predict?user_id=${
+          user.id
+        }&page=${pageNum}&per_page=5&search=${encodeURIComponent(
           theSearchTerm
         )}`
       );
@@ -169,11 +173,14 @@ function RecommendationsPage() {
   // Example "Gemini" fetch for the description
   const fetchDescriptionFromGemini = async (title) => {
     try {
-      const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/generate-blurb`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title }),
-      });
+      const res = await fetch(
+        `${process.env.REACT_APP_BACKEND_URL}/api/generate-blurb`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title }),
+        }
+      );
       const data = await res.json();
       return data.success ? data.description : title;
     } catch (error) {
@@ -257,10 +264,10 @@ function RecommendationsPage() {
       try {
         const response = await userService.getSavedVideos();
         if (response.success) {
-          setSavedVideos(new Set(response.videos.map(v => v.videoUrl)));
+          setSavedVideos(new Set(response.videos.map((v) => v.videoUrl)));
         }
       } catch (error) {
-        console.error('Error loading saved videos:', error);
+        console.error("Error loading saved videos:", error);
       }
     };
 
@@ -272,22 +279,22 @@ function RecommendationsPage() {
   const handleSaveVideo = async (video) => {
     try {
       if (savedVideos.has(video.videoUrl)) {
-        toast.error('Video already saved!');
+        toast.error("Video already saved!");
         return;
       }
 
       const response = await userService.saveVideo(video.videoUrl, video.title);
       if (response.success) {
-        setSavedVideos(prev => new Set([...prev, video.videoUrl]));
-        toast.success('Video saved successfully!');
+        setSavedVideos((prev) => new Set([...prev, video.videoUrl]));
+        toast.success("Video saved successfully!");
       }
     } catch (error) {
-      console.error('Error saving video:', error);
-      toast.error(error.response?.data?.message || 'Error saving video');
+      console.error("Error saving video:", error);
+      toast.error(error.response?.data?.message || "Error saving video");
     }
   };
 
-  const [votes, setVotes] = useState({});  // Track votes for each video
+  const [votes, setVotes] = useState({}); // Track votes for each video
   const [userVotes, setUserVotes] = useState({}); // Track user's votes
 
   // Handle voting
@@ -295,59 +302,59 @@ function RecommendationsPage() {
     try {
       // If user is trying to vote the same way again, remove their vote
       if (userVotes[videoId] === voteType) {
-        await videoService.vote(videoId, 'none');
-        setUserVotes(prev => {
+        await videoService.vote(videoId, "none");
+        setUserVotes((prev) => {
           const newVotes = { ...prev };
           delete newVotes[videoId];
           return newVotes;
         });
-        setVotes(prev => ({
+        setVotes((prev) => ({
           ...prev,
           [videoId]: {
             ...prev[videoId],
-            score: prev[videoId].score + (voteType === 'up' ? -1 : 1)
-          }
+            score: prev[videoId].score + (voteType === "up" ? -1 : 1),
+          },
         }));
       } else {
         // Calculate score change
-        let scoreChange = voteType === 'up' ? 1 : -1;
+        let scoreChange = voteType === "up" ? 1 : -1;
         if (userVotes[videoId]) {
           // If changing vote, double the effect
           scoreChange *= 2;
         }
 
         await videoService.vote(videoId, voteType);
-        setUserVotes(prev => ({
+        setUserVotes((prev) => ({
           ...prev,
-          [videoId]: voteType
+          [videoId]: voteType,
         }));
-        setVotes(prev => ({
+        setVotes((prev) => ({
           ...prev,
           [videoId]: {
             ...prev[videoId],
-            score: (prev[videoId]?.score || 0) + scoreChange
-          }
+            score: (prev[videoId]?.score || 0) + scoreChange,
+          },
         }));
       }
     } catch (error) {
-      toast.error('Failed to vote. Please try again.');
+      toast.error("Failed to vote. Please try again.");
     }
   };
 
   // Load votes for videos
   const loadVotes = async (videoIds) => {
     try {
-      const votePromises = videoIds.map(id => videoService.getVotes(id));
+      const votePromises = videoIds.map((id) => videoService.getVotes(id));
       const voteResults = await Promise.all(votePromises);
       const newVotes = {};
       const newUserVotes = {};
-      
+
       voteResults.forEach((result, index) => {
         if (result.success) {
           const videoId = videoIds[index];
           newVotes[videoId] = {
             score: result.score,
-            total: result.total
+            total: result.total,
           };
           if (result.userVote) {
             newUserVotes[videoId] = result.userVote;
@@ -355,39 +362,39 @@ function RecommendationsPage() {
         }
       });
 
-      setVotes(prev => ({ ...prev, ...newVotes }));
-      setUserVotes(prev => ({ ...prev, ...newUserVotes }));
+      setVotes((prev) => ({ ...prev, ...newVotes }));
+      setUserVotes((prev) => ({ ...prev, ...newUserVotes }));
     } catch (error) {
-      console.error('Error loading votes:', error);
+      console.error("Error loading votes:", error);
     }
   };
 
   // Load votes when recommendations change
   useEffect(() => {
     if (combinedRecommendations.length > 0) {
-      const videoIds = combinedRecommendations.map(rec => rec.id);
+      const videoIds = combinedRecommendations.map((rec) => rec.id);
       loadVotes(videoIds);
     }
   }, [combinedRecommendations]);
 
-  const [comments, setComments] = useState({});  // Store comments for each video
+  const [comments, setComments] = useState({}); // Store comments for each video
   const [newComments, setNewComments] = useState({}); // Store new comment text for each video
   const [editingComment, setEditingComment] = useState(null); // Track which comment is being edited
-  const [editText, setEditText] = useState(''); // Store edited comment text
+  const [editText, setEditText] = useState(""); // Store edited comment text
 
   // Load comments for a video
   const loadComments = async (videoId) => {
     try {
       const response = await videoService.getComments(videoId);
       if (response.success) {
-        setComments(prev => ({
+        setComments((prev) => ({
           ...prev,
-          [videoId]: response.comments
+          [videoId]: response.comments,
         }));
       }
     } catch (error) {
-      console.error('Error loading comments:', error);
-      toast.error('Failed to load comments');
+      console.error("Error loading comments:", error);
+      toast.error("Failed to load comments");
     }
   };
 
@@ -399,19 +406,19 @@ function RecommendationsPage() {
 
       const response = await videoService.addComment(videoId, content);
       if (response.success) {
-        setComments(prev => ({
+        setComments((prev) => ({
           ...prev,
-          [videoId]: [response.comment, ...(prev[videoId] || [])]
+          [videoId]: [response.comment, ...(prev[videoId] || [])],
         }));
-        setNewComments(prev => ({
+        setNewComments((prev) => ({
           ...prev,
-          [videoId]: ''
+          [videoId]: "",
         }));
-        toast.success('Comment added successfully');
+        toast.success("Comment added successfully");
       }
     } catch (error) {
-      console.error('Error adding comment:', error);
-      toast.error('Failed to add comment');
+      console.error("Error adding comment:", error);
+      toast.error("Failed to add comment");
     }
   };
 
@@ -420,19 +427,19 @@ function RecommendationsPage() {
     try {
       const response = await videoService.updateComment(commentId, editText);
       if (response.success) {
-        setComments(prev => ({
+        setComments((prev) => ({
           ...prev,
-          [videoId]: prev[videoId].map(comment =>
+          [videoId]: prev[videoId].map((comment) =>
             comment.id === commentId ? response.comment : comment
-          )
+          ),
         }));
         setEditingComment(null);
-        setEditText('');
-        toast.success('Comment updated successfully');
+        setEditText("");
+        toast.success("Comment updated successfully");
       }
     } catch (error) {
-      console.error('Error updating comment:', error);
-      toast.error('Failed to update comment');
+      console.error("Error updating comment:", error);
+      toast.error("Failed to update comment");
     }
   };
 
@@ -441,22 +448,24 @@ function RecommendationsPage() {
     try {
       const response = await videoService.deleteComment(commentId);
       if (response.success) {
-        setComments(prev => ({
+        setComments((prev) => ({
           ...prev,
-          [videoId]: prev[videoId].filter(comment => comment.id !== commentId)
+          [videoId]: prev[videoId].filter(
+            (comment) => comment.id !== commentId
+          ),
         }));
-        toast.success('Comment deleted successfully');
+        toast.success("Comment deleted successfully");
       }
     } catch (error) {
-      console.error('Error deleting comment:', error);
-      toast.error('Failed to delete comment');
+      console.error("Error deleting comment:", error);
+      toast.error("Failed to delete comment");
     }
   };
 
   // Load comments when recommendations change
   useEffect(() => {
     if (combinedRecommendations.length > 0) {
-      combinedRecommendations.forEach(rec => {
+      combinedRecommendations.forEach((rec) => {
         loadComments(rec.id);
       });
     }
@@ -467,7 +476,10 @@ function RecommendationsPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 mt-16">
         {/* Search Bar */}
         <div className="mb-6">
-          <form onSubmit={handleSearchSubmit} className="flex items-center space-x-2">
+          <form
+            onSubmit={handleSearchSubmit}
+            className="flex items-center space-x-2"
+          >
             <input
               className="flex-1 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2
                          bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
@@ -502,7 +514,9 @@ function RecommendationsPage() {
                       key={team.id}
                       className="py-2 border-b last:border-b-0 border-gray-200 dark:border-gray-700"
                     >
-                      <span className="text-gray-800 dark:text-gray-200">{team.name}</span>
+                      <span className="text-gray-800 dark:text-gray-200">
+                        {team.name}
+                      </span>
                     </div>
                   ))
                 ) : (
@@ -542,7 +556,8 @@ function RecommendationsPage() {
             {!isModelLoaded && (
               <div className="bg-blue-50 dark:bg-blue-900 p-4 rounded-lg mb-4">
                 <p className="text-blue-700 dark:text-blue-200">
-                  Loading personalized recommendations... Meanwhile, enjoy highlights from your favorites!
+                  Loading personalized recommendations... Meanwhile, enjoy
+                  highlights from your favorites!
                 </p>
               </div>
             )}
@@ -562,30 +577,50 @@ function RecommendationsPage() {
                     {/* Voting buttons */}
                     <div className="flex items-center space-x-2">
                       <button
-                        onClick={() => handleVote(item.id, 'up')}
+                        onClick={() => handleVote(item.id, "up")}
                         className={`p-1 rounded-md transition-colors ${
-                          userVotes[item.id] === 'up'
-                            ? 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400'
-                            : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                          userVotes[item.id] === "up"
+                            ? "bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400"
+                            : "hover:bg-gray-100 dark:hover:bg-gray-700"
                         }`}
                       >
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                        <svg
+                          className="w-6 h-6"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M5 15l7-7 7 7"
+                          />
                         </svg>
                       </button>
                       <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                         {votes[item.id]?.score || 0}
                       </span>
                       <button
-                        onClick={() => handleVote(item.id, 'down')}
+                        onClick={() => handleVote(item.id, "down")}
                         className={`p-1 rounded-md transition-colors ${
-                          userVotes[item.id] === 'down'
-                            ? 'bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-400'
-                            : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                          userVotes[item.id] === "down"
+                            ? "bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-400"
+                            : "hover:bg-gray-100 dark:hover:bg-gray-700"
                         }`}
                       >
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        <svg
+                          className="w-6 h-6"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 9l-7 7-7-7"
+                          />
                         </svg>
                       </button>
                     </div>
@@ -595,18 +630,23 @@ function RecommendationsPage() {
                         onClick={() => handleSaveVideo(item)}
                         disabled={savedVideos.has(item.videoUrl)}
                         className={`px-3 py-1 rounded-md text-sm font-medium transition-colors
-                          ${savedVideos.has(item.videoUrl)
-                            ? 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
-                            : 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800'
+                          ${
+                            savedVideos.has(item.videoUrl)
+                              ? "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                              : "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800"
                           }`}
                       >
-                        {savedVideos.has(item.videoUrl) ? 'Saved' : 'Save Video'}
+                        {savedVideos.has(item.videoUrl)
+                          ? "Saved"
+                          : "Save Video"}
                       </button>
                     )}
                   </div>
                 </div>
 
-                <p className="mt-2 text-gray-700 dark:text-gray-300">{item.description}</p>
+                <p className="mt-2 text-gray-700 dark:text-gray-300">
+                  {item.description}
+                </p>
 
                 {/* If it's a video, show the video player */}
                 {item.type === "video" && item.videoUrl && (
@@ -631,11 +671,13 @@ function RecommendationsPage() {
                   {/* Add comment form */}
                   <div className="flex items-start space-x-2 mb-6">
                     <textarea
-                      value={newComments[item.id] || ''}
-                      onChange={(e) => setNewComments(prev => ({
-                        ...prev,
-                        [item.id]: e.target.value
-                      }))}
+                      value={newComments[item.id] || ""}
+                      onChange={(e) =>
+                        setNewComments((prev) => ({
+                          ...prev,
+                          [item.id]: e.target.value,
+                        }))
+                      }
                       placeholder="Add a comment..."
                       className="flex-1 min-h-[80px] p-2 border border-gray-300 dark:border-gray-600 rounded-lg
                                bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
@@ -653,10 +695,13 @@ function RecommendationsPage() {
 
                   {/* Comments list */}
                   <div className="space-y-4">
-                    {comments[item.id]?.map(comment => (
+                    {comments[item.id]?.map((comment) => (
                       <div key={comment.id} className="flex space-x-3">
                         <img
-                          src={comment.user.avatarUrl || '/images/default-avatar.jpg'}
+                          src={
+                            comment.user.avatarUrl ||
+                            "/images/default-avatar.jpg"
+                          }
                           alt={comment.user.username}
                           className="w-10 h-10 rounded-full"
                         />
@@ -668,7 +713,9 @@ function RecommendationsPage() {
                                   {comment.user.username}
                                 </span>
                                 <span className="ml-2 text-sm text-gray-500">
-                                  {new Date(comment.created_at).toLocaleDateString()}
+                                  {new Date(
+                                    comment.created_at
+                                  ).toLocaleDateString()}
                                 </span>
                               </div>
                               {comment.user_id === user?.id && (
@@ -683,7 +730,9 @@ function RecommendationsPage() {
                                     Edit
                                   </button>
                                   <button
-                                    onClick={() => handleDeleteComment(comment.id, item.id)}
+                                    onClick={() =>
+                                      handleDeleteComment(comment.id, item.id)
+                                    }
                                     className="text-red-600 dark:text-red-400 hover:text-red-700"
                                   >
                                     Delete
@@ -703,7 +752,7 @@ function RecommendationsPage() {
                                   <button
                                     onClick={() => {
                                       setEditingComment(null);
-                                      setEditText('');
+                                      setEditText("");
                                     }}
                                     className="px-3 py-1 text-gray-600 dark:text-gray-400
                                              hover:text-gray-700 dark:hover:text-gray-300"
@@ -711,7 +760,9 @@ function RecommendationsPage() {
                                     Cancel
                                   </button>
                                   <button
-                                    onClick={() => handleUpdateComment(comment.id, item.id)}
+                                    onClick={() =>
+                                      handleUpdateComment(comment.id, item.id)
+                                    }
                                     className="px-3 py-1 bg-blue-600 text-white rounded-lg
                                              hover:bg-blue-700 transition-colors"
                                   >

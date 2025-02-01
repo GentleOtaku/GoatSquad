@@ -283,6 +283,8 @@ def get_vector_recommendations(current_user):
 
         followed_teams = [team.get('name', '') for team in (current_user.followed_teams or [])]
         followed_players = [player.get('fullName', '') for player in (current_user.followed_players or [])]
+        print(followed_teams)
+        print(followed_players)
         if not followed_teams:
             followed_teams = random.sample(RANDOM_TEAMS, min(3, len(RANDOM_TEAMS)))
         if not followed_players:
@@ -291,7 +293,7 @@ def get_vector_recommendations(current_user):
         query = f"Teams: {', '.join(followed_teams)}. Players: {', '.join(followed_players)}."
 
         if query: 
-            data = search_feature("embeddings", query, start)
+            data = search_feature("embeddings", "Shohei Ohtani", start)
             ids = [item['id'] for item in data]
             return jsonify({
                 'success': True,

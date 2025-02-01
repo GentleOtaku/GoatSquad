@@ -134,7 +134,6 @@ def rag_recommend_pgvector(table, query_text, start=0):
             ).fetchall()
 
             recommendations = [{"id": row[0], "distance": row[1]} for row in results]
-            print(recommendations)
             return recommendations
 
     except Exception as e:
